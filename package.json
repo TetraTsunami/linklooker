@@ -5,12 +5,17 @@
   "description": "Previews links using ChatGPT when you hover over them",
   "author": "Tsuni <tsuni@tsuni.dev>",
   "scripts": {
-    "dev": "plasmo dev",
+    "dev": "plasmo dev --target=firefox-mv2",
     "build": "plasmo build",
     "package": "plasmo package"
   },
   "dependencies": {
-    "plasmo": "0.85.2",
+    "@mozilla/readability": "^0.5.0",
+    "@plasmohq/messaging": "^0.6.2",
+    "@plasmohq/storage": "^1.10.0",
+    "cheerio": "1.0.0-rc.12",
+    "jsdom": "^24.0.0",
+    "plasmo": "0.84.2",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },
@@ -20,12 +25,20 @@
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
     "prettier": "3.2.4",
+    "tailwindcss": "^3.4.3",
     "typescript": "5.3.3"
   },
   "manifest": {
     "host_permissions": [
       "https://*/*"
-    ]
+    ],
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "$FIREFOX_EXT_ID"
+      }
+    }
   }
 }
