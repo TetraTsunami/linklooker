@@ -1,5 +1,3 @@
-import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import * as cheerio from 'cheerio';
 
@@ -8,11 +6,9 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
     .then(res => res.text())
     .then(html => {
       const meta = parse(html)
-      const reader = new Readability(new JSDOM(html, { url: req.body.url }).window.document)
-      const parsed = reader.parse()
       res.send({
         meta: meta,
-        reader: parsed
+        html: html
       })
     })
     .catch(err => {
@@ -22,6 +18,15 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
     })
 }
 
+interface Meta {
+  title: string,
+  description?: string,
+  image?: {
+    url: string,
+    width?: string,
+    height?: string
+  },
+}
 const shorthandProperties = {
   "image": "image:url",
   "video": "video:url",
@@ -34,7 +39,7 @@ const keyBlacklist = [
   'prototype'
 ]
 
-const parse = (html: string) => {
+const parse = (html: string): Meta => {
   // Subset of open-graph parser (https://github.com/samholmes/node-open-graph/blob/master/index.js)
   const $ = cheerio.load(html);
   // Check for xml namespace
@@ -148,7 +153,7 @@ const parse = (html: string) => {
 
   }
 
-  return meta;
+  return meta as Meta;
 
 }
 

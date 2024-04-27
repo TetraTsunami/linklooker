@@ -1,6 +1,9 @@
-import { sendToBackground } from "@plasmohq/messaging"
-import { useEffect, useState } from "react";
 import cssText from "data-text:~style.css"
+import { useEffect, useState } from "react";
+import { sendToBackground } from "@plasmohq/messaging"
+import { Readability } from "@mozilla/readability";
+import OpenAI from 'openai';
+import { env } from "process";
  
 export const getStyle = () => {
   const style = document.createElement("style")
@@ -8,11 +11,19 @@ export const getStyle = () => {
   return style
 }
 
+const openai = new OpenAI({
+    apiKey: env.OPENAI_API_KEY, 
+    dangerouslyAllowBrowser: true, // it is a browser extension so this is fine
+  });
+
 let hoverTarget: Element | undefined = null;
 
 const summaryPopup = () => {
     const [position, setPosition] = useState({top: 0, left: 0});
-    const [data, setData] = useState("");
+    const [visible, setVisible] = useState(false);
+    const [title, setTitle] = useState("");
+    const [images, setImages] = useState([]);
+    const [description, setDescription] = useState("");
     
     const movePopup = (target: Element) => {
         // position at bottom left of target
@@ -24,13 +35,13 @@ const summaryPopup = () => {
 
     const updatePopup = async () => {
         let url = hoverTarget.getAttribute('href');
-        if (!url) {
+        if (!url || url.startsWith('#') || url.startsWith('javascript')) {
             return;
         }
-        setData("Loading...")
         if (url.startsWith('/')) {
             url = window.location.origin + url;
         }
+        setDescription("")
         // Send url to background script to fetch data + summary
         const resp = await sendToBackground({
         name: "scrape",
@@ -38,12 +49,34 @@ const summaryPopup = () => {
                 url
             }
         })
-        console.log(resp);
+        // Basic data obtained, fill in popup
         if (resp.error) {
-            setData(`<h1>Error</h1><p>${resp.error}</p>`);
+            setTitle("Error fetching data");
+            setDescription(`${resp.error}`);
             return;
         }
-        setData(`<h1>${resp.meta.title}</h1><p>${resp.meta.description}</p>`);
+        setTitle(resp.meta.title);
+        setImages([resp.meta.image]);
+        setVisible(true);
+        // Prepare to send off to OpenAI
+        const reader = new Readability(new DOMParser().parseFromString(resp.html, "text/html"))
+        const parsed = reader.parse();
+        await getOpenAICompletion(parsed.textContent.slice(0, 50), setDescription);
+
+    }
+
+    const getOpenAICompletion = async (input: string, output: React.Dispatch<React.SetStateAction<string>>) => {
+        console.log('getting completion');
+        const stream = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{role: "system", content: 'Generate a descriptive short summary for the following web page content, avoiding clickbait, advertising or sensationalism; merely try to concisely summarize the page.'}, { role: "user", content: input }],
+            stream: true,
+            max_tokens: 50 
+        });
+        for await (const chunk of stream) {
+            if (!chunk.choices[0].delta) continue;
+            output((prev) => prev + chunk.choices[0].delta.content);
+        }
     }
 
     useEffect(() => {
@@ -62,6 +95,7 @@ const summaryPopup = () => {
                 if (!hoverTarget) {
                     return;
                 }
+                setVisible(false);
                 movePopup(hoverTarget);
                 await updatePopup();
             }
@@ -72,14 +106,28 @@ const summaryPopup = () => {
         }
     })
 
+    useEffect(() => {
+        const callback = (event) => {
+            if (event.target !== hoverTarget) {
+                setVisible(false);
+            }
+        }
+        window.addEventListener('scroll', callback);
+        return () => {
+            window.removeEventListener('scroll', callback);
+        }
+    })
+
     return (
-        <div className="pointer-events-none fixed max-w-[500px] rounded-lg border border-gray-500 bg-black p-2 text-lg" 
-            style={{top: position.top,left: position.left}}>
-            {data}
+        <div className={`fixed max-w-[500px] rounded-xl text-white bg-gray-800/50 backdrop-blur-xl p-2 text-base shadow-i-lg ${visible ? "hover-popup" : ""}`}
+                style={{top: position.top,left: position.left, display: visible ? "block" : "block", width: "150px", height: "150px"}}>
+                {images[0] && <img src={images[0].url} />}
+                {title && <h1 className="text-lg font-bold">{title}</h1>}
+                {description && <p>{description}</p>}
         </div>
     )
 }
 
-console.log('content script loaded?');
+console.log('content script loaded!');
 
 export default summaryPopup;
