@@ -5,6 +5,7 @@
   "description": "Previews links using ChatGPT when you hover over them",
   "author": "Tsuni <tsuni@tsuni.dev>",
   "scripts": {
+    "dev-chrome": "plasmo dev",
     "dev": "plasmo dev --target=firefox-mv2",
     "build": "plasmo build",
     "package": "plasmo package"
