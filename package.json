@@ -37,6 +37,9 @@
     "host_permissions": [
       "https://*/*"
     ],
+    "options_ui": {
+      "open_in_tab": false
+    },
     "browser_specific_settings": {
       "gecko": {
         "id": "$FIREFOX_EXT_ID"

@@ -42,6 +42,13 @@ const summaryPopup = () => {
             url = window.location.origin + url;
         }
         setDescription("")
+        // Grab our config
+        const config = {
+            apiKey: await settings.get("openai-key"),
+            baseURL: await settings.get("openai-baseURL"),
+            model: await settings.get("openai-model"),
+            prompt: await settings.get("system-prompt")
+        }
         // Send url to background script to fetch data + summary
         const resp = await sendToBackground({
         name: "scrape",
@@ -62,19 +69,20 @@ const summaryPopup = () => {
         // Prepare to send off to OpenAI
         const reader = new Readability(new DOMParser().parseFromString(resp.html, "text/html"))
         const parsed = reader.parse();
-        const messages = [{role: "system", content: 'Generate a descriptive short summary for the following web page content, avoiding clickbait, advertising or sensationalism; merely try to concisely summarize the page.'}, { role: "user", content: parsed.textContent.slice(0, 50) }, { role: "assistant", content: resp.meta.description}] as ChatCompletionMessageParam[];
-        await streamOpenAICompletion(messages, setDescription).catch((e) => setDescription((prev) => prev + "\n" + "Error fetching data: " + e));
+        const messages = [{role: "system", content: config.prompt}, { role: "user", content: parsed.textContent.slice(0, 50) }, { role: "assistant", content: resp.meta.description}] as ChatCompletionMessageParam[];
+        await streamOpenAICompletion(messages, setDescription, config).catch((e) => setDescription((prev) => prev + "\n" + "Error fetching data: " + e));
 
     }
 
-    const streamOpenAICompletion = async (messages: ChatCompletionMessageParam[], output: React.Dispatch<React.SetStateAction<string>>) => {
+    const streamOpenAICompletion = async (messages: ChatCompletionMessageParam[], output: React.Dispatch<React.SetStateAction<string>>, config: {apiKey: string, baseURL: string, model: string}) => {
         const openai = new OpenAI({
-            apiKey: await settings.get("openai-api"),
-            dangerouslyAllowBrowser: true, // it is a browser extension so this is fine
+            apiKey: config.apiKey,
+            baseURL: config.baseURL,
+            dangerouslyAllowBrowser: true, // it is a browser extension so this is okay!!
         });
         
         const stream = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+            model: config.model,
             messages: messages,
             stream: true,
             max_tokens: 50 
