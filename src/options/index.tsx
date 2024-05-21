@@ -8,7 +8,7 @@ const defaults = {
   baseURL: "https://api.openai.com/v1/",
   model: "gpt-3.5-turbo",
   prompt:
-    "Generate a descriptive and concise summary for the following web page, avoiding emojis and lists.",
+    "Generate a concise and to the point summary for the following content. Do not begin with 'The article...' or similar. Make sure the summary relates to the context snippet provided.",
   inputTokens: 300,
   outputTokens: 100
 }
@@ -20,7 +20,7 @@ Lorem ipsum is typically a corrupted version of De finibus bonorum et malorum, a
 Versions of the Lorem ipsum text have been used in typesetting at least since the 1960s, when it was popularized by advertisements for Letraset transfer sheets. Lorem ipsum was introduced to the digital world in the mid-1980s, when Aldus employed it in graphic and word-processing templates for its desktop publishing program PageMaker. Other popular word processors, including Pages and Microsoft Word, have since adopted Lorem ipsum, as have many LaTeX packages, web content managers such as Joomla! and WordPress, and CSS libraries such as Semantic UI.`
 
 function IndexOptions() {
-  const [apiKey, setApiKey] = useStorage("openai-key")
+  const [apiKey, setApiKey] = useStorage("openai-key", "")
   const [baseURL, setBaseURL] = useStorage("openai-baseURL", defaults.baseURL)
   const [model, setModel] = useStorage("openai-model", defaults.model)
   const [prompt, setPrompt] = useStorage("system-prompt", defaults.prompt)
@@ -37,33 +37,36 @@ function IndexOptions() {
 
   return (
     <main className="bg-neutral-800 text-white">
-      <fieldset className="options-grid">
+      <fieldset>
         <legend>Options</legend>
-        <label htmlFor="key">API Key</label>
-        <input
-          type="password"
-          id="key"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-        />
-        <label htmlFor="baseURL">Base URL</label>
-        <input
-          id="baseURL"
-          value={baseURL}
-          onChange={(e) => setBaseURL(e.target.value)}
-        />
-        <label htmlFor="model">Model Name</label>
-        <input
-          id="model"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-        />
-        <label htmlFor="prompt">Prompt</label>
-        <textarea
-          id="prompt"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-        />
+        <div className="options-grid">
+          <label htmlFor="key">API Key</label>
+          <input
+            type="password"
+            id="key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+          <label htmlFor="baseURL">Base URL</label>
+          <input
+            id="baseURL"
+            value={baseURL}
+            onChange={(e) => setBaseURL(e.target.value)}
+          />
+          <label htmlFor="model">Model Name</label>
+          <input
+            id="model"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+          />
+          <label htmlFor="prompt">Prompt</label>
+          <textarea
+            id="prompt"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+        </div>
+        <p className="italic">The model recieves the text of the hovered link and the beginning of the content text.</p>
       </fieldset>
       <fieldset>
         <legend>Tokens</legend>

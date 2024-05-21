@@ -1,5 +1,5 @@
-import { Readability } from "@mozilla/readability"
-import cssText from "data-text:~content/styles.css"
+import { isProbablyReaderable, Readability } from "@mozilla/readability"
+import cssText from "data-text:~contents/styles.css"
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam } from "openai/resources"
 import { useEffect, useState } from "react"
@@ -9,14 +9,14 @@ import { Storage } from "@plasmohq/storage"
 import type { PlasmoCSConfig } from "plasmo"
 
 export const config: PlasmoCSConfig = {
-    matches: ["*://*/*"],
-    exclude_matches: ["*://*.google.com/*", "*://wikipedia.com", "*://x.com"],
+    matches: ["<all_urls>"],
+    exclude_matches: ["*://*.wikipedia.com/*", "*://*.google.com/*",  "*://x.com/*"],
 }
 const defaults = {
   baseURL: "https://api.openai.com/v1/",
   model: "gpt-3.5-turbo",
   prompt:
-    "Generate a descriptive and concise summary for the following web page, avoiding emojis and lists.",
+    "Generate a concise and to the point summary for the following content. Do not begin with 'The article...' or similar. Make sure the summary relates to the context snippet provided.",
   inputTokens: 300,
   outputTokens: 100
 }
@@ -72,6 +72,7 @@ const summaryPopup = () => {
 
   const updatePopup = async () => {
     // Validate URL
+    const text = hoverTarget.textContent
     let url = hoverTarget.getAttribute("href")
     if (!url || url.startsWith("#") || url.startsWith("javascript")) {
       return
@@ -90,20 +91,24 @@ const summaryPopup = () => {
       setDescription(`${resp.error}`)
       return
     }
+    const document = new DOMParser().parseFromString(resp.html, "text/html")
+    if (!isProbablyReaderable(document)) return // We can't really do anything with this
+    const reader = new Readability(document)
+    const parsed = reader.parse()
     // Render popup with basic data
-    setTitle(resp.meta.title)
-    setDescription(resp.meta.description + "\n")
+    setTitle(resp.meta.title || parsed.title)
+    setDescription("")
     setImages([resp.meta.image])
     setActive(true)
+    if (!resp.meta.image) {
+      setPopupReady(true)
+    } else {
+      setTimeout(() => setPopupReady(true), 1000)
+    }
     // Use OpenAI API to generate a summary
-    const reader = new Readability(
-      new DOMParser().parseFromString(resp.html, "text/html")
-    )
-    const parsed = reader.parse()
     const messages = [
       { role: "system", content: config.prompt },
-      { role: "user", content: parsed.textContent.slice(0, config.inputTokens * 3) },
-      { role: "assistant", content: resp.meta.description }
+      { role: "user", content: `Context: "${text}"\nContent: "${parsed.textContent.slice(0, config.inputTokens * 3)}"` },
     ] as ChatCompletionMessageParam[]
     await streamOpenAICompletion(messages, setDescription, config).catch((e) =>
       setDescription((prev) => prev + "\n" + "Error fetching data: " + e)
@@ -173,6 +178,11 @@ const summaryPopup = () => {
     }
   })
 
+  let url = "#"
+  try {
+    hoverTarget.getAttribute("href")
+  } catch (_) {}
+
   return (
     <div
       className={`fixed min-h-8 w-[500px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg ${isActive && isPopupReady ? "hover-popup" : ""}`}
@@ -190,14 +200,15 @@ const summaryPopup = () => {
           className="max-h-[200px] w-full object-cover"
         />
       )}
-      {title && <h1 className="px-4 py-2 text-lg font-bold">{title}</h1>}
-      {description && (
-        <div className="flex flex-col gap-2 px-4 pb-4">
-          {description.split("\n").map((content) => (
-            <p key={content.slice(0, 10)}>{content}</p>
-          ))}
-        </div>
-      )}
+
+      <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
+        {title && <a href={url} className="text-lg font-bold hover:underline">{title}</a>}
+        {description && description.split("\n").map((content, i) => (
+            <p key={i}>{content.split(" ").map((word, i) => (
+              <span key={i} className="word">{word} </span>
+          ))}</p>
+        ))}
+      </div>
     </div>
   )
 }
