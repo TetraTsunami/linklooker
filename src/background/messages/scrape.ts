@@ -2,20 +2,17 @@ import type { PlasmoMessaging } from "@plasmohq/messaging"
 import * as cheerio from 'cheerio';
 
 const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
-  fetch(req.body.url)
-    .then(res => res.text())
-    .then(html => {
-      const meta = parse(html)
-      res.send({
-        meta: meta,
-        html: html
-      })
+  try {
+    const resp = await fetch(req.body.url)
+    const html = await resp.text()
+    const meta = parse(html)
+    res.send({
+      meta,
+      html,
     })
-    .catch(err => {
-      res.send({
-        error: err.message
-      })
-    })
+  } catch (err) {
+    res.send({ error: err.message })
+  }
 }
 
 interface Meta {

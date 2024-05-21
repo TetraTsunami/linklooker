@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#optionsGrid {
+  display: grid;
+  grid-template-columns: auto minmax(50px, 1fr);
+  gap: 10px;
+}
+
+#optionsGrid input, #optionsGrid textarea {
+  color: black;
+  padding: 2px;
+}
+
+textarea {
+  resize: vertical;
+  height: 5em;
+}

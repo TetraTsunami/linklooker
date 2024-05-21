@@ -1,10 +1,11 @@
-import cssText from "data-text:~style.css"
+import cssText from "data-text:~content.css"
 import { useEffect, useState } from "react";
 import { sendToBackground } from "@plasmohq/messaging"
 import { Readability } from "@mozilla/readability";
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from "openai/resources";
 import { Storage } from "@plasmohq/storage";
+import { defaults } from "~options";
  
 export const getStyle = () => {
   const style = document.createElement("style")
@@ -16,12 +17,22 @@ const settings = new Storage()
 
 let hoverTarget: Element | undefined = null;
 
+const getConfig = async () => {
+    // Grab our config
+    const config = {
+        apiKey: await settings.get("openai-key"),
+        baseURL: await settings.get("openai-baseURL") || defaults.baseURL,
+        model: await settings.get("openai-model") || defaults.model,
+        prompt: await settings.get("system-prompt") || defaults.prompt
+    }
+    return config;
+}
 const summaryPopup = () => {
     const [position, setPosition] = useState({top: 0, left: 0} as {top?: number, left?: number, right?: number, bottom?: number});
-    const [visible, setVisible] = useState(false);
+    const [isActive, setActive] = useState(false); // Is the user trying to open the popup
+    const [isPopupReady, setPopupReady] = useState(false); // Is the popup ready to be displayed
     const [title, setTitle] = useState("");
     const [images, setImages] = useState([]);
-    const [imageLoaded, setImageLoaded] = useState(false);
     const [description, setDescription] = useState("");
     
     const movePopup = (target: Element) => {
@@ -33,7 +44,7 @@ const summaryPopup = () => {
     }
 
     const updatePopup = async () => {
-        setImageLoaded(false);
+        // Validate URL
         let url = hoverTarget.getAttribute('href');
         if (!url || url.startsWith('#') || url.startsWith('javascript')) {
             return;
@@ -41,37 +52,28 @@ const summaryPopup = () => {
         if (url.startsWith('/')) {
             url = window.location.origin + url;
         }
+        // Reset state & fetch configuration
+        setPopupReady(false);
         setDescription("")
-        // Grab our config
-        const config = {
-            apiKey: await settings.get("openai-key"),
-            baseURL: await settings.get("openai-baseURL"),
-            model: await settings.get("openai-model"),
-            prompt: await settings.get("system-prompt")
-        }
-        // Send url to background script to fetch data + summary
-        const resp = await sendToBackground({
-        name: "scrape",
-            body: {
-                url
-            }
-        })
-        // Basic data obtained, fill in popup
+        const config = await getConfig();
+        // Fetch basic data & summary
+        const resp = await sendToBackground({name: "scrape", body: {url}})
         if (resp.error) {
             setTitle("Error fetching data");
             setDescription(`${resp.error}`);
             return;
         }
+        // Render popup with basic data
         setTitle(resp.meta.title);
         setDescription(resp.meta.description + "\n");
         setImages([resp.meta.image]);
-        setVisible(true);
-        // Prepare to send off to OpenAI
+        setActive(true);
+        // Use OpenAI API to generate a summary
         const reader = new Readability(new DOMParser().parseFromString(resp.html, "text/html"))
         const parsed = reader.parse();
         const messages = [{role: "system", content: config.prompt}, { role: "user", content: parsed.textContent.slice(0, 50) }, { role: "assistant", content: resp.meta.description}] as ChatCompletionMessageParam[];
         await streamOpenAICompletion(messages, setDescription, config).catch((e) => setDescription((prev) => prev + "\n" + "Error fetching data: " + e));
-
+        // Further updates to the popup are handled by the streaming function
     }
 
     const streamOpenAICompletion = async (messages: ChatCompletionMessageParam[], output: React.Dispatch<React.SetStateAction<string>>, config: {apiKey: string, baseURL: string, model: string}) => {
@@ -89,7 +91,7 @@ const summaryPopup = () => {
         });
         for await (const chunk of stream) {
             if (!chunk.choices[0].delta) continue;
-            output((prev) => prev + chunk.choices[0].delta.content);
+            output((prev) => prev + (chunk.choices[0].delta.content || ""));
         }
     }
 
@@ -109,7 +111,7 @@ const summaryPopup = () => {
                 if (!hoverTarget) {
                     return;
                 }
-                setVisible(false);
+                setActive(false);
                 movePopup(hoverTarget);
                 await updatePopup();
             }
@@ -123,7 +125,7 @@ const summaryPopup = () => {
     useEffect(() => {
         const callback = (event) => {
             if (event.target !== hoverTarget) {
-                setVisible(false);
+                setActive(false);
             }
         }
         window.addEventListener('scroll', callback);
@@ -133,9 +135,9 @@ const summaryPopup = () => {
     })
 
     return (
-        <div className={`fixed min-h-8 w-[500px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg ${visible && imageLoaded ? "hover-popup" : ""}`}
-                style={{top: position.top, left: position.left, right: position.right, bottom: position.bottom, display: visible && imageLoaded ? "block" : "block"}}>
-                {images[0] && <img onLoad={() => setImageLoaded(true)} src={images[0].url} className="max-h-[200px] w-full object-cover"/>}
+        <div className={`fixed min-h-8 w-[500px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg ${isActive && isPopupReady ? "hover-popup" : ""}`}
+                style={{top: position.top, left: position.left, right: position.right, bottom: position.bottom, display: isActive && isPopupReady ? "block" : "none"}}>
+                {images[0] && <img onLoad={() => setPopupReady(true)} src={images[0].url} className="max-h-[200px] w-full object-cover"/>}
                 {title && <h1 className="px-4 py-2 text-lg font-bold">{title}</h1>}
                 {description && (
                     <div className="flex flex-col gap-2 px-4 pb-4">
@@ -145,7 +147,5 @@ const summaryPopup = () => {
         </div>
     )
 }
-
-console.log('content script loaded!');
 
 export default summaryPopup;

@@ -9,21 +9,12 @@
 @keyframes growDown {
   0% {
     transform: translateY(-10px);
+    max-height: 0;
     opacity: 0;
   }
   100% {
     transform: translateY(0);
+    max-height: 1000px;
     opacity: 1;
   }
-}
-
-#optionsGrid {
-  display: grid;
-  grid-template-columns: auto minmax(50px, 1fr);
-  gap: 10px;
-}
-
-#optionsGrid input, #optionsGrid textarea {
-  color: black;
-  padding: 2px;
 }
