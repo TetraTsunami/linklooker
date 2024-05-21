@@ -2,13 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
-#optionsGrid {
+main {
+  padding: 1rem;
+}
+
+fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 5px;
+  border: 1px solid white;
+  margin-bottom: 10px;
+  padding: 0.5rem 1rem;
+}
+
+fieldset legend{
+  font-weight: bolder;
+  font-size: large;
+  margin-left: 1rem;
+}
+
+.options-grid {
   display: grid;
   grid-template-columns: auto minmax(50px, 1fr);
   gap: 10px;
 }
 
-#optionsGrid input, #optionsGrid textarea {
+input, textarea {
   color: black;
   padding: 2px;
 }
