@@ -73,7 +73,12 @@ const summaryPopup = () => {
   const updatePopup = async () => {
     // Validate URL
     const text = hoverTarget.textContent
-    let url = hoverTarget.getAttribute("href")
+    let url = ""
+    try {
+      url = hoverTarget.getAttribute("href")
+    } catch (_) {
+      return
+    }
     if (!url || url.startsWith("#") || url.startsWith("javascript")) {
       return
     }
