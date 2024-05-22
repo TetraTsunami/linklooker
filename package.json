@@ -7,8 +7,8 @@
   "scripts": {
     "dev-chrome": "plasmo dev",
     "dev": "plasmo dev --target=firefox-mv2",
-    "build": "plasmo build",
-    "package": "plasmo package"
+    "build": "plasmo build && plasmo build --target=firefox-mv2",
+    "package": "plasmo package && plasmo package --target=firefox-mv2"
   },
   "dependencies": {
     "@mozilla/readability": "^0.5.0",
@@ -42,7 +42,7 @@
     },
     "browser_specific_settings": {
       "gecko": {
-        "id": "$FIREFOX_EXT_ID"
+        "id": "linklooker@tsuni.dev"
       }
     }
   }

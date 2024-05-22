@@ -1,6 +1,9 @@
-name: "Submit to Web Store"
+name: "Build"
+
 on:
-  workflow_dispatch:
+  push: 
+    branches:
+      - master
 
 jobs:
   build:
@@ -18,17 +21,17 @@ jobs:
         with:
           version: latest
           run_install: true
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v3.4.1
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v3.8.2
         with:
-          node-version: 16.x
+          node-version: 20.x
           cache: "pnpm"
       - name: Build the extension
         run: pnpm build
-      - name: Package the extension into a zip artifact
+      - name: Package the extension into zip artifacts
         run: pnpm package
-      - name: Browser Platform Publish
-        uses: PlasmoHQ/bpp@v3
+      - name: Upload the artifacts
+        uses: actions/upload-artifact@v4
         with:
-          keys: ${{ secrets.SUBMIT_KEYS }}
-          artifact: build/chrome-mv3-prod.zip
+          name: extension
+          path: build/*.zip
