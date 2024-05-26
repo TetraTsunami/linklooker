@@ -10,7 +10,7 @@ import type { PlasmoCSConfig } from "plasmo"
 
 export const config: PlasmoCSConfig = {
     matches: ["<all_urls>"],
-    exclude_matches: ["*://*.wikipedia.com/*", "*://*.google.com/*",  "*://x.com/*"],
+    exclude_matches: ["*://*.wikipedia.com/*"],
     css: ["./global.css"],
   }
   
