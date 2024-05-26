@@ -1,8 +1,8 @@
-import { isProbablyReaderable, Readability } from "@mozilla/readability"
+import { Readability } from "@mozilla/readability"
 import cssText from "data-text:~contents/styles.css"
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam } from "openai/resources"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
@@ -25,7 +25,8 @@ const defaultSettings = {
   prompt:
     "Generate a concise and to the point summary for the following content. Do not begin with 'The article...' or similar. Make sure the summary relates to the context snippet provided.",
   inputTokens: 300,
-  outputTokens: 100
+  outputTokens: 100,
+  aiThreshold: 300,
 }
 
 interface Meta {
@@ -52,6 +53,7 @@ const getConfig = async () => {
     prompt: (await settings.get("system-prompt")) || defaultSettings.prompt,
     inputTokens: (parseInt(await settings.get("input-tokens"))) || defaultSettings.inputTokens,
     outputTokens: (parseInt(await settings.get("output-tokens"))) || defaultSettings.outputTokens,
+    aiThreshold: (parseInt(await settings.get("ai-threshold"))) || defaultSettings.aiThreshold,
   }
   return config
 }
@@ -64,7 +66,7 @@ const summaryPopup = () => {
     bottom?: number
   })
   const [isActive, setActive] = useState(false) // Is the user trying to open the popup
-  const [isPopupReady, setPopupReady] = useState(false) // Is the popup ready to be displayed
+  const [isOpen, setOpen] = useState(false) // Is the popup currently open? [Used for animations]
   const [title, setTitle] = useState("")
   const [image, setImage] = useState({
     url: "",
@@ -72,10 +74,13 @@ const summaryPopup = () => {
     height: "",
   })
   const [description, setDescription] = useState("")
+  const [aiSummary, setSummary] = useState("")
+  const ref = useRef<HTMLDivElement>(null)
 
   const resetState = () => {
-    setPopupReady(false)
+    setActive(false)
     setDescription("")
+    setSummary("")
   }
 
   /**
@@ -147,14 +152,14 @@ const summaryPopup = () => {
    * Uses the OpenAI API to generate a more extensive summary for the given content. Output is appended to the description state.
    * @param tagData The data to generate a summary for
    */
-  const getOAIData = async (tagData: { title: string; description: string; image: { url: string; width?: string; height?: string }; body: string; siteName: string }) => {
+  const getOAIData = async (tagData: { title: string; description: string; body: string; }) => {
     const config = await getConfig()
+    if (tagData.description.length > config.aiThreshold) { return } // Skip if the description is long enough already
     // Maybe the text of the link is ambiguous and the user wants to know how the content relates
     const linkText = hoverTarget.textContent
     const messages = [
       { role: "system", content: config.prompt },
       { role: "user", content: `Context: "${linkText}"\nContent: "${tagData.body.slice(0, config.inputTokens * 3)}[...]"` },
-      { role: "assistant", content: `#${tagData.title}\n${tagData.description}`}
     ] as ChatCompletionMessageParam[]
     const openai = new OpenAI({
       apiKey: config.apiKey,
@@ -168,10 +173,9 @@ const summaryPopup = () => {
       stream: true,
       max_tokens: config.outputTokens,
     })
-    setDescription((prev) => prev + "\n")
     for await (const chunk of stream) {
       if (!chunk.choices[0].delta) continue
-      setDescription((prev) => prev + (chunk.choices[0].delta.content || ""))
+      setSummary((prev) => prev + (chunk.choices[0].delta.content || ""))
     }
   }
 
@@ -179,11 +183,14 @@ const summaryPopup = () => {
     setTitle(tagData.title)
     setImage(tagData.image)
     setDescription(tagData.description)
-    setActive(true)
     if (!tagData.image) {
-      setPopupReady(true)
+      setActive(true)
+      setOpen(true)
     } else {
-      setTimeout(() => setPopupReady(true), 1000) // Wait for image to load
+      setTimeout(() => {
+        setActive(true)
+        setOpen(true)
+      }, 1000) // Wait for image to load
     }
   }
 
@@ -193,15 +200,14 @@ const summaryPopup = () => {
       resetState()
       const tagData = await getTagData(url)
       renderTagPopup(tagData)
-      if (tagData.description.length < 200) { // If the description is too short, we'll try to get more data
-        await getOAIData(tagData)
-      }
+      await getOAIData(tagData)
     } catch (e) {
       console.error(e)
       resetState()
     }
   }
 
+  // Update the target when hovering over a link
   useEffect(() => {
     const callback = (event: { target: Element }) => {
       hoverTarget = (event.target as Element).closest("a")
@@ -212,13 +218,13 @@ const summaryPopup = () => {
     }
   })
 
+  // Summon on pressing control
   useEffect(() => {
     const callback = async (event: { key: string }) => {
       if (event.key === "Control" && hoverTarget) {
         if (!hoverTarget) {
           return
         }
-        setActive(false)
         movePopup(hoverTarget)
         await updatePopup()
       }
@@ -229,10 +235,12 @@ const summaryPopup = () => {
     }
   })
 
+  // Dismiss on scroll (the popup doesn't move with the page)
   useEffect(() => {
     const callback = (event: { target: Element }) => {
-      if (event.target !== hoverTarget) {
+      if (event.target.tagName !== "PLASMO-CSUI") {
         setActive(false)
+        setTimeout(() => setOpen(false), 300)
       }
     }
     window.addEventListener("scroll", callback)
@@ -241,26 +249,41 @@ const summaryPopup = () => {
     }
   })
 
+  // Dismiss on clicking outside
+  useEffect(() => {
+    const callback = (event: { target: Element }) => {
+      if (event.target.tagName !== "PLASMO-CSUI") {
+        setActive(false)
+        setTimeout(() => setOpen(false), 300)
+      }
+    }
+    document.addEventListener("click", callback)
+    return () => {
+      document.removeEventListener("click", callback)
+    }
+  })
+
   let url = "#"
   try {
-    hoverTarget.getAttribute("href")
+    url = hoverTarget.getAttribute("href")
   } catch (_) {}
 
   // If it's got transparency, we don't want to cut it off (could be icon or logo) = use contain. Otherwise, it looks prettier to use cover
   const imageType = image && image.url && image.url.includes("png") ? "image-contain" : "image-cover"
   return (
     <div
-      className={`fixed min-h-8 w-[500px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg ${isActive && isPopupReady ? "hover-popup" : ""}`}
+      className={`fixed min-h-8 w-[500px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg ${isActive ? "hover-popup" : "hide"}`}
+      ref={ref}
       style={{
         top: position.top,
         left: position.left,
         right: position.right,
         bottom: position.bottom,
-        display: isActive && isPopupReady ? "block" : "none"
+        display: isActive || isOpen ? "block" : "none"
       }}>
       {image && (
         <img
-          onLoad={() => setPopupReady(true)}
+          onLoad={() => setActive(true)}
           src={image.url}
           className={imageType}
         />
@@ -269,10 +292,21 @@ const summaryPopup = () => {
       <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
         {title && <a href={url} className="text-lg font-bold hover:underline">{title}</a>}
         {description && description.split("\n").map((content, i) => (
-            <p key={i}>{content.split(" ").map((word, i) => (
-              <span key={i} className="word">{word} </span>
-          ))}</p>
+          <p key={i}>
+            {content}
+          </p>
         ))}
+        {aiSummary && (
+          <div className="summary relative flex flex-col gap-2 italic">
+            {aiSummary.split("\n").map((content, i) => (
+              <p key={i}>
+                {content.split(" ").map((word, i) => (
+                  <span key={i} className="word">{word} </span>
+                ))}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

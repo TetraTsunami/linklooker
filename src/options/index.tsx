@@ -4,13 +4,14 @@ import "./styles.css"
 
 import { useState } from "react"
 
-const defaults = {
+const defaultSettings = {
   baseURL: "https://api.openai.com/v1/",
   model: "gpt-3.5-turbo",
   prompt:
     "Generate a concise and to the point summary for the following content. Do not begin with 'The article...' or similar. Make sure the summary relates to the context snippet provided.",
   inputTokens: 300,
-  outputTokens: 100
+  outputTokens: 100,
+  aiThreshold: 300,
 }
 
 const placeholderText = `In publishing and graphic design, Lorem ipsum is a placeholder text commonly used to demonstrate the visual form of a document or a typeface without relying on meaningful content. Lorem ipsum may be used as a placeholder before the final copy is available. It is also used to temporarily replace text in a process called greeking, which allows designers to consider the form of a webpage or publication, without the meaning of the text influencing the design.
@@ -21,16 +22,20 @@ Versions of the Lorem ipsum text have been used in typesetting at least since th
 
 function IndexOptions() {
   const [apiKey, setApiKey] = useStorage("openai-key", "")
-  const [baseURL, setBaseURL] = useStorage("openai-baseURL", defaults.baseURL)
-  const [model, setModel] = useStorage("openai-model", defaults.model)
-  const [prompt, setPrompt] = useStorage("system-prompt", defaults.prompt)
+  const [baseURL, setBaseURL] = useStorage("openai-baseURL", defaultSettings.baseURL)
+  const [model, setModel] = useStorage("openai-model", defaultSettings.model)
+  const [prompt, setPrompt] = useStorage("system-prompt", defaultSettings.prompt)
   const [inputTokens, setInputTokens] = useStorage(
     "input-tokens",
-    defaults.inputTokens
+    defaultSettings.inputTokens
   )
   const [outputTokens, setOutputTokens] = useStorage(
     "output-tokens",
-    defaults.outputTokens
+    defaultSettings.outputTokens
+  )
+  const [aiThreshold, setAIThreshold] = useStorage(
+    "ai-threshold",
+    defaultSettings.aiThreshold
   )
   const [inputTokenCost, setInputTokenCost] = useState(0.5) // Per million tokens
   const [outputTokenCost, setOutputTokenCost] = useState(1.5)
@@ -83,7 +88,16 @@ function IndexOptions() {
             value={outputTokens || 0}
             onChange={(e) => setOutputTokens(parseInt(e.target.value))}
           />
+          <label htmlFor="summary-thresh">AI Summary Threshold</label>
+          <input
+            id="summary-thresh"
+            value={aiThreshold || 0}
+            onChange={(e) => setAIThreshold(parseInt(e.target.value))}
+          />
         </div>
+        <p className="italic">
+          Some websites have a long description that might be "good enough" as a summary. If the site's description is longer than the threshold, the extension will skip calling the AI for a summary.
+        </p>
         <h2 className="text-lg font-semibold">Examples:</h2>
         <p className="italic">
           These examples help you get an idea of what the model will "see". The
@@ -92,6 +106,7 @@ function IndexOptions() {
         </p>
         <p>Input: {placeholderText.slice(0, inputTokens * 3) + "..."}</p>
         <p>Output: {placeholderText.slice(0, outputTokens * 3) + "..."}</p>
+        <p>Threshold: {placeholderText.slice(0, aiThreshold) + "..."}</p>
         <p className="italic">
           This extension uses an estimate of ~3 characters per token.
         </p>
@@ -124,18 +139,16 @@ function IndexOptions() {
           </span>
         </div>
         <div className="options-grid">
-          <p>System Prompt</p>
-          <p>{`${Math.ceil(prompt.length / 3)} tokens * $${inputTokenCost.toFixed(2)} / 1M`}</p>
           <p>Input Tokens</p>
-          <p>{`${inputTokens} tokens * $${inputTokenCost.toFixed(2)} / 1M`}</p>
+          <p>{`(${Math.ceil(prompt.length / 3)} tokens prompt + ${inputTokens} tokens page data + ${Math.ceil(aiThreshold / 3)} tokens page description + ~18 tokens title) * $${inputTokenCost.toFixed(2)} / 1M`}</p>
           <p>Output Tokens</p>
           <p>{`${outputTokens} tokens * $${outputTokenCost.toFixed(2)} / 1M`}</p>
         </div>
-        <p>{`= ~$${(((Math.ceil(prompt.length / 3) + inputTokens) * inputTokenCost) / 1e6 + (outputTokens * outputTokenCost) / 1e6).toPrecision(3)} per summarization`}</p>
+        <p>{`= ~$${(((Math.ceil(prompt.length / 3) + inputTokens + Math.ceil(aiThreshold / 3) + 18) * inputTokenCost) / 1e6 + (outputTokens * outputTokenCost) / 1e6).toPrecision(3)} per summarization`}</p>
         <p className="italic">
-          This number is a lower estimate. The extension sends the article title
-          and prewritten summary to the summarization endpoint, in addition to
-          the article text and system prompt.
+          This number is an estimate assuming one token roughly equals 3 characters. 
+          The extension sends the article title and prewritten summary to the summarization 
+          endpoint, in addition to the chosen amount of article text and system prompt.
         </p>
       </fieldset>
     </main>

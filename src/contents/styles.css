@@ -3,11 +3,30 @@
 @tailwind utilities;
 
 .hover-popup {
-  animation: growDown 0.6s ease-in-out;
+  animation: growDown 0.6s ease-in-out forwards;
+}
+
+.hide {
+  animation: shrinkDown 0.1s ease-in forwards;
+}
+
+.summary {
+  margin-left: 12px;
+}
+
+.summary::before {
+  content: " ";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  background: rgba(232, 166, 250, 0.50);
+  width: 2px;
+  border-radius: 2px;
 }
 
 .word {
-  animation: fadeUp 0.5s ease-in-out;
+  animation: fadeUp 0.5s ease-out;
 }
 
 @keyframes fadeUp {
@@ -19,9 +38,8 @@
     transform: translateY(0);
     opacity: 1;
   }
-  
-
 }
+
 @keyframes growDown {
   0% {
     transform: translateY(-10px);
@@ -30,8 +48,21 @@
   }
   100% {
     transform: translateY(0);
-    max-height: 1000px;
+    max-height: 500px;
     opacity: 1;
+  }
+}
+
+@keyframes shrinkDown {
+  0% {
+    transform: translateY(0);
+    max-height: 500px;
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px);
+    max-height: 0;
+    opacity: 0;
   }
 }
 
