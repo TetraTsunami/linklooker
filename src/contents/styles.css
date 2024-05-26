@@ -34,3 +34,15 @@
     opacity: 1;
   }
 }
+
+.image-contain { /* Used for logos, left align */
+  height: 100px;
+  padding: 0.5rem;
+  object-fit: contain;
+}
+
+.image-cover { /* Used for backgrounds that we can cut off */
+  max-height: 200px;
+  width: 100%;
+  object-fit: cover;
+}
