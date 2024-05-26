@@ -155,8 +155,9 @@ const summaryPopup = () => {
   const getOAIData = async (tagData: { title: string; description: string; body: string; }) => {
     const config = await getConfig()
     if (tagData.description.length > config.aiThreshold) { return } // Skip if the description is long enough already
+    if (!config.apiKey) { return } // Skip if we don't have an API key
     // Maybe the text of the link is ambiguous and the user wants to know how the content relates
-    const linkText = hoverTarget.textContent
+    const linkText = hoverTarget ? hoverTarget.textContent : "Unknown"
     const messages = [
       { role: "system", content: config.prompt },
       { role: "user", content: `Context: "${linkText}"\nContent: "${tagData.body.slice(0, config.inputTokens * 3)}[...]"` },
