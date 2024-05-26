@@ -218,10 +218,10 @@ const summaryPopup = () => {
     }
   })
 
-  // Summon on pressing control
+  // Summon on pressing shift
   useEffect(() => {
     const callback = async (event: { key: string }) => {
-      if (event.key === "Control" && hoverTarget) {
+      if (event.key === "Shift" && hoverTarget) {
         if (!hoverTarget) {
           return
         }
