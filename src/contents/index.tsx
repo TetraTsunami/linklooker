@@ -11,6 +11,7 @@ import type { PlasmoCSConfig } from "plasmo"
 export const config: PlasmoCSConfig = {
     matches: ["<all_urls>"],
     exclude_matches: ["*://*.wikipedia.com/*", "*://*.google.com/*",  "*://x.com/*"],
+    css: ["./global.css"],
   }
   
 export const getStyle = () => {
@@ -38,7 +39,6 @@ interface Meta {
     height?: string
   },
 }
-
 
 const settings = new Storage()
 
@@ -107,12 +107,12 @@ const summaryPopup = () => {
    * @returns A URL
    * @throws If the URL cannot be found, or this element cannot handle the URL
    */
-  const getURL = (target: Element) => {
+  const getURL = () => {
     let url = ""
     try {
       url = hoverTarget.getAttribute("href")
     } catch (_) {
-      throw new Error("Could not get URL")
+      throw new Error("No URL found")
     }
     if (!url || url.startsWith("#") || url.startsWith("javascript")) {
       throw new Error("Invalid URL")
@@ -180,6 +180,9 @@ const summaryPopup = () => {
   }
 
   const renderTagPopup = (tagData: { title: any; description: string; image: any }) => {
+    if (!tagData.title && !tagData.description) {
+      throw new Error("No data found")
+    }
     setTitle(tagData.title)
     setImage(tagData.image)
     setDescription(tagData.description)
@@ -196,14 +199,20 @@ const summaryPopup = () => {
 
   const updatePopup = async () => {
     try {
-      const url = getURL(hoverTarget)
+      const url = getURL()
       resetState()
       const tagData = await getTagData(url)
       renderTagPopup(tagData)
-      await getOAIData(tagData)
+      try {
+        await getOAIData(tagData)
+      } catch (e) {
+        console.warn("Error getting OpenAI completion: ", e)
+      }
     } catch (e) {
       console.error(e)
       resetState()
+      hoverTarget.classList.add("linklooker-fail")
+      setTimeout(() => hoverTarget.classList.remove("linklooker-fail"), 1000)
     }
   }
 
