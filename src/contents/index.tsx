@@ -68,6 +68,7 @@ const summaryPopup = () => {
   const [isActive, setActive] = useState(false) // Is the user trying to open the popup
   const [isOpen, setOpen] = useState(false) // Is the popup currently open? [Used for animations]
   const [title, setTitle] = useState("")
+  const [publisher, setPublisher] = useState("")
   const [image, setImage] = useState({
     url: "",
     width: "",
@@ -79,6 +80,7 @@ const summaryPopup = () => {
 
   const resetState = () => {
     setActive(false)
+    setOpen(false)
     setDescription("")
     setSummary("")
   }
@@ -180,11 +182,12 @@ const summaryPopup = () => {
     }
   }
 
-  const renderTagPopup = (tagData: { title: any; description: string; image: any }) => {
+  const renderTagPopup = (tagData: { title: any; description: string; image: any; siteName: string }) => {
     if (!tagData.title && !tagData.description) {
       throw new Error("No data found")
     }
     setTitle(tagData.title)
+    setPublisher(tagData.siteName)
     setImage(tagData.image)
     setDescription(tagData.description)
     if (!tagData.image) {
@@ -201,7 +204,6 @@ const summaryPopup = () => {
   const updatePopup = async () => {
     try {
       const url = getURL()
-      resetState()
       const tagData = await getTagData(url)
       renderTagPopup(tagData)
       try {
@@ -235,6 +237,7 @@ const summaryPopup = () => {
         if (!hoverTarget) {
           return
         }
+        resetState()
         movePopup(hoverTarget)
         await updatePopup()
       }
@@ -279,10 +282,10 @@ const summaryPopup = () => {
   } catch (_) {}
 
   // If it's got transparency, we don't want to cut it off (could be icon or logo) = use contain. Otherwise, it looks prettier to use cover
-  const imageType = image && image.url && image.url.includes("png") ? "image-contain" : "image-cover"
+  const imageType = image && image.url && (image.url.includes("png") || image.url.includes("svg")) ? "image-contain" : "image-cover"
   return (
     <div
-      className={`fixed min-h-8 w-[500px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg ${isActive ? "hover-popup" : "hide"}`}
+      className={`fixed min-h-8 w-[450px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg ${isActive ? "hover-popup" : "hide"}`}
       ref={ref}
       style={{
         top: position.top,
@@ -291,33 +294,37 @@ const summaryPopup = () => {
         bottom: position.bottom,
         display: isActive || isOpen ? "block" : "none"
       }}>
-      {image && (
-        <img
-          onLoad={() => setActive(true)}
-          src={image.url}
-          className={imageType}
-        />
-      )}
-
-      <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
-        {title && <a href={url} className="text-lg font-bold hover:underline">{title}</a>}
-        {description && description.split("\n").map((content, i) => (
-          <p key={i}>
-            {content}
-          </p>
-        ))}
-        {aiSummary && (
-          <div className="summary relative flex flex-col gap-2 italic">
-            {aiSummary.split("\n").map((content, i) => (
-              <p key={i}>
-                {content.split(" ").map((word, i) => (
-                  <span key={i} className="word">{word} </span>
-                ))}
-              </p>
-            ))}
-          </div>
+      <div className="flex max-h-[50vh] flex-col overflow-y-auto">
+        {image && (
+          <img
+            onLoad={() => setActive(true)}
+            src={image.url}
+            className={imageType}
+          />
         )}
+        <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
+          {title && <a href={url} className="text-lg font-bold hover:underline">{title}</a>}
+          {description && description.split("\n").map((content, i) => (
+            <p key={i}>
+              {content}
+            </p>
+          ))}
+          {aiSummary && (
+            <div className="summary relative flex flex-col gap-2 italic">
+              {aiSummary.split("\n").map((content, i) => (
+                <p key={i}>
+                  {content.split(" ").map((word, i) => (
+                    <span key={i} className="word">{word} </span>
+                  ))}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+      {publisher && <div className="w-full bg-gray-700/50 p-4">
+        <p className="text-sm text-gray-400">{publisher}</p>
+      </div>}
     </div>
   )
 }

@@ -48,7 +48,7 @@
   }
   100% {
     transform: translateY(0);
-    max-height: 500px;
+    max-height: 700px;
     opacity: 1;
   }
 }
@@ -56,7 +56,7 @@
 @keyframes shrinkDown {
   0% {
     transform: translateY(0);
-    max-height: 500px;
+    max-height: 700px;
     opacity: 1;
   }
   100% {
@@ -67,8 +67,10 @@
 }
 
 .image-contain { /* Used for logos, left align */
-  height: 100px;
+  min-height: 50px;
+  max-height: 200px;
   padding: 0.5rem;
+  margin-right: auto;
   object-fit: contain;
 }
 
