@@ -151,6 +151,12 @@ function IndexOptions() {
           endpoint, in addition to the chosen amount of article text and system prompt.
         </p>
       </fieldset>
+      <a
+        href="https://github.com/TetraTsunami/linklooker"
+        className="text-blue-500 underline"
+      >
+        Report bugs or suggest features
+      </a>
     </main>
   )
 }
