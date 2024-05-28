@@ -105,7 +105,7 @@ function GettingStartedPage() {
           </section>
           <section className="flex max-w-prose flex-col items-center gap-4">
             <h1 className="text-4xl font-semibold">Need Help?</h1>
-            <p>This extension doesn't work on PDFs, pages with URL anchors, or while you're on Wikipedia (they already have popups). Also, there are a lot more options available in the <a className="cursor-pointer text-blue-400 underline" onClick={() => chrome.runtime.openOptionsPage()}>settings</a> page of this extension.</p>
+            <p>This extension doesn't work on PDFs, links to different sections of the current page, or while you're on Wikipedia (they already have popups). Also, there are a lot more options available in the <a className="cursor-pointer text-blue-400 underline" onClick={() => chrome.runtime.openOptionsPage()}>settings</a> page of this extension.</p>
             <p>If you have any questions or need help, feel free to open an issue on <a className="text-blue-400 underline" href="https://github.com/TetraTsunami/linklooker/issues">Github</a>!</p>
           </section>
         </div>}

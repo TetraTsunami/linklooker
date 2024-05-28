@@ -9,10 +9,10 @@ const onClicked = () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("tabs/getting-started.html") });
 }
 
-chrome.runtime.onInstalled.addListener(onInstalled);
-
-if (chrome.action != undefined) {
-  chrome.action.onClicked.addListener(onClicked);
+if (process.env.PLASMO_BROWSER === "firefox") {
+  browser.runtime.onInstalled.addListener(onInstalled)
+  browser.action.onClicked.addListener(onClicked);
 } else {
-  chrome.browserAction.onClicked.addListener(onClicked);
+  chrome.runtime.onInstalled.addListener(onInstalled);
+  chrome.action.onClicked.addListener(onClicked);
 }
