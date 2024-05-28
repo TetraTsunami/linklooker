@@ -58,6 +58,8 @@ const getConfig = async () => {
   return config
 }
 
+let keyLock = false // using like a state variable, but we don't need to rerender when it changes. Also, needs faster updates than state variables get.
+
 const SummaryPopup = () => {
   const [position, setPosition] = useState({ top: 0, left: 0 } as {
     top?: number
@@ -254,16 +256,31 @@ const SummaryPopup = () => {
     }
   })
 
-  // Summon on pressing shift
+  // Summon on releasing shift
   useEffect(() => {
     const callback = async (event: { key: string }) => {
-      if (event.key === "Shift" && hoverTarget) {
-        await openPopup()
+      if (event.key === "Shift") {
+        keyLock = false
+      } else {
+        keyLock = true
       }
     }
     window.addEventListener("keydown", callback)
     return () => {
       window.removeEventListener("keydown", callback)
+    }
+  })
+
+  // Summon on releasing shift
+  useEffect(() => {
+    const callback = async (event: { key: string }) => {
+      if (event.key === "Shift" && hoverTarget && !keyLock) {
+        await openPopup()
+      }
+    }
+    window.addEventListener("keyup", callback)
+    return () => {
+      window.removeEventListener("keyup", callback)
     }
   })
 
