@@ -58,15 +58,14 @@ const getConfig = async () => {
   return config
 }
 
-const summaryPopup = () => {
+const SummaryPopup = () => {
   const [position, setPosition] = useState({ top: 0, left: 0 } as {
     top?: number
     left?: number
     right?: number
     bottom?: number
   })
-  const [isActive, setActive] = useState(false) // Is the user trying to open the popup
-  const [isOpen, setOpen] = useState(false) // Is the popup currently open? [Used for animations]
+  const [animationState, setAnimationState] = useState("closed" as "closed" | "opening" | "open" | "closing")
   const [title, setTitle] = useState("")
   const [publisher, setPublisher] = useState("")
   const [image, setImage] = useState({
@@ -76,13 +75,33 @@ const summaryPopup = () => {
   })
   const [description, setDescription] = useState("")
   const [aiSummary, setSummary] = useState("")
-  const ref = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
 
-  const resetState = () => {
-    setActive(false)
-    setOpen(false)
+  const resetState = async () => {
+    if (animationState != "closed") {
+      await closePopup()
+    }
+    setTitle("")
     setDescription("")
     setSummary("")
+    setPublisher("")
+    setImage({ url: "", width: "", height: "" })
+  }
+
+  const openPopup = async () => {
+    await resetState()
+    movePopup(hoverTarget)
+    setAnimationState("opening")
+    await updatePopup()
+  }
+
+  const closePopup = async () => {
+    if (animationState == "closed" || animationState == "closing") return
+    setAnimationState("closing")
+    return new Promise((resolve) => setTimeout(() => {
+      setAnimationState("closed")
+      resolve(null)
+    }, 300))
   }
 
   /**
@@ -162,7 +181,7 @@ const summaryPopup = () => {
     const linkText = hoverTarget ? hoverTarget.textContent : "Unknown"
     const messages = [
       { role: "system", content: config.prompt },
-      { role: "user", content: `Context: "${linkText}"\nContent: "${tagData.body.slice(0, config.inputTokens * 3)}[...]"` },
+      { role: "user", content: `Context: "${linkText}"\nContent: "${tagData.body.slice(0, config.inputTokens * 3)}[...]\nSummary:"` },
     ] as ChatCompletionMessageParam[]
     const openai = new OpenAI({
       apiKey: config.apiKey,
@@ -188,15 +207,18 @@ const summaryPopup = () => {
     }
     setTitle(tagData.title)
     setPublisher(tagData.siteName)
-    setImage(tagData.image)
+    setImage({
+      "url": "",
+      "width": "",
+      "height": "",
+      ...tagData.image
+    })
     setDescription(tagData.description)
     if (!tagData.image) {
-      setActive(true)
-      setOpen(true)
+      setAnimationState("open")
     } else {
       setTimeout(() => {
-        setActive(true)
-        setOpen(true)
+        setAnimationState("open")
       }, 1000) // Wait for image to load
     }
   }
@@ -224,8 +246,10 @@ const summaryPopup = () => {
     const callback = (event: { target: Element }) => {
       hoverTarget = (event.target as Element).closest("a")
     }
+    // @ts-ignore ts(2769)
     document.addEventListener("mouseover", callback)
     return () => {
+      // @ts-ignore ts(2769)
       document.removeEventListener("mouseover", callback)
     }
   })
@@ -234,12 +258,7 @@ const summaryPopup = () => {
   useEffect(() => {
     const callback = async (event: { key: string }) => {
       if (event.key === "Shift" && hoverTarget) {
-        if (!hoverTarget) {
-          return
-        }
-        resetState()
-        movePopup(hoverTarget)
-        await updatePopup()
+        await openPopup()
       }
     }
     window.addEventListener("keydown", callback)
@@ -252,12 +271,13 @@ const summaryPopup = () => {
   useEffect(() => {
     const callback = (event: { target: Element }) => {
       if (event.target.tagName !== "PLASMO-CSUI") {
-        setActive(false)
-        setTimeout(() => setOpen(false), 300)
+        closePopup()
       }
     }
+    // @ts-ignore ts(2769)
     window.addEventListener("scroll", callback)
     return () => {
+      // @ts-ignore ts(2769)
       window.removeEventListener("scroll", callback)
     }
   })
@@ -266,12 +286,13 @@ const summaryPopup = () => {
   useEffect(() => {
     const callback = (event: { target: Element }) => {
       if (event.target.tagName !== "PLASMO-CSUI") {
-        setActive(false)
-        setTimeout(() => setOpen(false), 300)
+        closePopup()
       }
     }
+    // @ts-ignore ts(2769)
     document.addEventListener("click", callback)
     return () => {
+      // @ts-ignore ts(2769)
       document.removeEventListener("click", callback)
     }
   })
@@ -282,26 +303,43 @@ const summaryPopup = () => {
   } catch (_) {}
 
   // If it's got transparency, we don't want to cut it off (could be icon or logo) = use contain. Otherwise, it looks prettier to use cover
-  const imageType = image && image.url && (image.url.includes("png") || image.url.includes("svg")) ? "image-contain" : "image-cover"
+  const getImageType = () => {
+    if (!image || !image.url) {return}
+    if (imageRef && imageRef.current && imageRef.current.width < 100 && imageRef.current.height < 100) {
+      return "image-contain"
+    }
+    if (image.url.includes("png") || image.url.includes("svg") || image.url.includes("gif")) {
+      return "image-contain"
+    }
+    return "image-cover"
+  }
+
+  const maxHeight = position.top > window.innerHeight / 2 ? position.top : window.innerHeight - position.top
+
   return (
     <div
-      className={`fixed min-h-8 w-[450px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg ${isActive ? "hover-popup" : "hide"}`}
-      ref={ref}
+      className={`fixed min-h-8 w-[450px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
+        ${animationState == "closed" || animationState == "closing" ? "hide" : "hover-popup"}`}
       style={{
         top: position.top,
         left: position.left,
         right: position.right,
         bottom: position.bottom,
-        display: isActive || isOpen ? "block" : "none"
+        display: animationState == "closed" ? "none" : "block"
       }}>
-      <div className="flex max-h-[50vh] flex-col overflow-y-auto">
-        {image && (
+      {animationState == "opening" && <div className="loader" />}
+      {animationState != "opening" && (
+      <div className="inner-popup flex flex-col overflow-y-auto"
+      style={{"--maxHeight": `${maxHeight - 80}px`} as React.CSSProperties}>
+        {image.url && (
           <img
-            onLoad={() => setActive(true)}
+            onLoad={() => setAnimationState("open")}
             src={image.url}
-            className={imageType}
+            ref={imageRef}
+            className={getImageType()}
           />
         )}
+        {(title || description || aiSummary) && (
         <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
           {title && <a href={url} className="text-lg font-bold hover:underline">{title}</a>}
           {description && description.split("\n").map((content, i) => (
@@ -320,13 +358,13 @@ const summaryPopup = () => {
               ))}
             </div>
           )}
-        </div>
-      </div>
-      {publisher && <div className="w-full bg-gray-700/50 p-4">
+        </div>)}
+      </div>)}
+      {publisher && animationState != "opening" && <div className="w-full bg-gray-700/50 px-4 py-3">
         <p className="text-sm text-gray-400">{publisher}</p>
       </div>}
     </div>
   )
 }
 
-export default summaryPopup
+export default SummaryPopup

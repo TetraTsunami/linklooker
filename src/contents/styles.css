@@ -29,6 +29,10 @@
   animation: fadeUp 0.5s ease-out;
 }
 
+.inner-popup {
+  animation: growToFit 0.6s ease-out forwards;
+}
+
 @keyframes fadeUp {
   0% {
     transform: translateY(5px);
@@ -66,16 +70,45 @@
   }
 }
 
+@keyframes growToFit {
+  0% {
+    max-height: 0;
+    opacity: 0;
+  }
+  100% {
+    max-height: var(--maxHeight);
+    opacity: 1;
+  }
+}
+
 .image-contain { /* Used for logos, left align */
-  min-height: 50px;
-  max-height: 200px;
+  max-height: 100px;
   padding: 0.5rem;
-  margin-right: auto;
   object-fit: contain;
+  align-self: start;
 }
 
 .image-cover { /* Used for backgrounds that we can cut off */
-  height: 200px;
+  max-height: 200px;
   width: 100%;
   object-fit: cover;
 }
+
+/* https://css-loaders.com/spinner/ */
+.loader {
+  width: 30px;
+  margin: 6px auto;
+  padding: 6px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #eeed;
+  --_m: 
+    conic-gradient(#0000 10%,#000),
+    linear-gradient(#000 0 0) content-box;
+  -webkit-mask: var(--_m);
+          mask: var(--_m);
+  -webkit-mask-composite: source-out;
+          mask-composite: subtract;
+  animation: l3 1.5s infinite linear;
+}
+@keyframes l3 {to{transform: rotate(1turn)}}
