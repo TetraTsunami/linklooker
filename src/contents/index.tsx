@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react"
 import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 import type { PlasmoCSConfig } from "plasmo"
+import { defaultSettings } from "~defaults"
 
 export const config: PlasmoCSConfig = {
     matches: ["<all_urls>"],
@@ -18,16 +19,6 @@ export const getStyle = () => {
   const style = document.createElement("style")
   style.textContent = cssText
   return style
-}
-
-const defaultSettings = {
-  baseURL: "https://api.openai.com/v1/",
-  model: "gpt-3.5-turbo",
-  prompt:
-    "Generate a concise and to the point summary for the following content. Do not begin with 'The article...' or similar. Make sure the summary relates to the context snippet provided.",
-  inputTokens: 300,
-  outputTokens: 100,
-  aiThreshold: 300,
 }
 
 interface Meta {
@@ -335,7 +326,7 @@ const SummaryPopup = () => {
 
   return (
     <div
-      className={`fixed min-h-8 w-[450px] overflow-clip rounded-xl text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
+      className={`fixed min-h-12 w-[450px] overflow-clip rounded-xl z-10 text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
         ${animationState == "closed" || animationState == "closing" ? "hide" : "hover-popup"}`}
       style={{
         top: position.top,
