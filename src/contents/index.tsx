@@ -225,6 +225,7 @@ const SummaryPopup = () => {
         await getOAIData(tagData)
       } catch (e) {
         console.warn("Error getting OpenAI completion: ", e)
+        setSummary("Error getting summary: " + e)
       }
     } catch (e) {
       console.error(e)
