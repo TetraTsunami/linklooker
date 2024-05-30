@@ -33,8 +33,6 @@ interface Meta {
 
 const settings = new Storage()
 
-let hoverTarget: Element | undefined = null
-
 const getConfig = async () => {
   // Grab our config
   const config = {
@@ -50,6 +48,8 @@ const getConfig = async () => {
 }
 
 let keyLock = false // using like a state variable, but we don't need to rerender when it changes. Also, needs faster updates than state variables get.
+let hoverTarget: Element | undefined = null
+let popupTarget: Element | undefined = null // Once the popup is open, this is the target element
 
 const SummaryPopup = () => {
   const [position, setPosition] = useState({ top: 0, left: 0 } as {
@@ -71,9 +71,7 @@ const SummaryPopup = () => {
   const imageRef = useRef<HTMLImageElement>(null)
 
   const resetState = async () => {
-    if (animationState != "closed") {
-      await closePopup()
-    }
+    await closePopup()
     setTitle("")
     setDescription("")
     setSummary("")
@@ -82,19 +80,26 @@ const SummaryPopup = () => {
   }
 
   const openPopup = async () => {
+    popupTarget = hoverTarget
     await resetState()
-    movePopup(hoverTarget)
+    movePopup(popupTarget)
     setAnimationState("opening")
     await updatePopup()
   }
 
   const closePopup = async () => {
-    if (animationState == "closed" || animationState == "closing") return
-    setAnimationState("closing")
-    return new Promise((resolve) => setTimeout(() => {
-      setAnimationState("closed")
-      resolve(null)
-    }, 300))
+    // closePopup can be called while the popup is closed (clicking), immediately after openPopup (error, etc.), and also several times in a short period (scrolling)
+    // Case #1: do nothing if the state is already closed
+    // Case #2: getting the current state needs to take place inside the update function
+    // Case #3: it can't interfere with itself, so we need to assume that "closing" means another instance already set the timeout
+    setAnimationState((current) => {
+      if (current == "opening" || current == "open") {
+        setTimeout(() => setAnimationState("closed"), 300)
+        return "closing"
+      }
+      return current
+    })
+    await new Promise(r => setTimeout(r, 300));
   }
 
   /**
@@ -124,7 +129,7 @@ const SummaryPopup = () => {
   const getURL = () => {
     let url = ""
     try {
-      url = hoverTarget.getAttribute("href")
+      url = popupTarget.getAttribute("href")
     } catch (_) {
       throw new Error("No URL found")
     }
@@ -153,12 +158,21 @@ const SummaryPopup = () => {
     const parsed = reader.parse()
     const tags = resp.meta as Meta // Data from html tags
     // There's some overlap, so we'll return a merged object with only the keys we need
+    if (!parsed) {
+      return {
+        title: tags.title,
+        description: tags.description,
+        image: tags.image,
+        body: "",
+        siteName: "",
+      }
+    }
     return {
       title: tags.title || parsed.title,
       description: tags.description || parsed.excerpt,
       image: tags.image,
-      body: parsed.textContent,
-      siteName: parsed.siteName,
+      body: parsed.textContent || "",
+      siteName: parsed.siteName || "",
     }
   }
 
@@ -168,10 +182,11 @@ const SummaryPopup = () => {
    */
   const getOAIData = async (tagData: { title: string; description: string; body: string; }) => {
     const config = await getConfig()
-    if (tagData.description.length > config.aiThreshold) { return } // Skip if the description is long enough already
+    if (!tagData.body) { return } // Not much to summarize, innit?
     if (!config.apiKey) { return } // Skip if we don't have an API key
+    if (tagData.description && tagData.description.length > config.aiThreshold) { return } // Skip if the description is long enough already
     // Maybe the text of the link is ambiguous and the user wants to know how the content relates
-    const linkText = hoverTarget ? hoverTarget.textContent : "Unknown"
+    const linkText = popupTarget.textContent || "Unknown"
     const messages = [
       { role: "system", content: config.prompt },
       { role: "user", content: `Context: "${linkText}"\nContent: "${tagData.body.slice(0, config.inputTokens * 3)}[...]\nSummary:"` },
@@ -212,7 +227,7 @@ const SummaryPopup = () => {
     } else {
       setTimeout(() => {
         setAnimationState("open")
-      }, 1000) // Wait for image to load
+      }, 2000) // Wait for image to load
     }
   }
 
@@ -220,6 +235,10 @@ const SummaryPopup = () => {
     try {
       const url = getURL()
       const tagData = await getTagData(url)
+      // Title is the only thing we can guarantee will be there. If it's the only thing we have, it's not worth showing
+      if (!tagData.description && !tagData.body && !tagData.image) {
+        throw new Error("No data found")
+      }
       renderTagPopup(tagData)
       try {
         await getOAIData(tagData)
@@ -230,8 +249,8 @@ const SummaryPopup = () => {
     } catch (e) {
       console.error(e)
       resetState()
-      hoverTarget.classList.add("linklooker-fail")
-      setTimeout(() => hoverTarget.classList.remove("linklooker-fail"), 1000)
+      popupTarget.classList.add("linklooker-fail")
+      setTimeout(() => popupTarget.classList.remove("linklooker-fail"), 1000)
     }
   }
 
@@ -251,11 +270,8 @@ const SummaryPopup = () => {
   // Summon on releasing shift
   useEffect(() => {
     const callback = async (event: { key: string }) => {
-      if (event.key === "Shift") {
-        keyLock = false
-      } else {
-        keyLock = true
-      }
+      if ( document.activeElement !== document.body ) return
+      keyLock = (event.key !== "Shift")
     }
     window.addEventListener("keydown", callback)
     return () => {
@@ -278,7 +294,7 @@ const SummaryPopup = () => {
 
   // Dismiss on scroll (the popup doesn't move with the page)
   useEffect(() => {
-    const callback = (event: { target: Element }) => {
+    const callback = async (event: { target: Element }) => {
       if (event.target.tagName !== "PLASMO-CSUI") {
         closePopup()
       }
@@ -293,7 +309,7 @@ const SummaryPopup = () => {
 
   // Dismiss on clicking outside
   useEffect(() => {
-    const callback = (event: { target: Element }) => {
+    const callback = async (event: { target: Element }) => {
       if (event.target.tagName !== "PLASMO-CSUI") {
         closePopup()
       }
@@ -308,7 +324,7 @@ const SummaryPopup = () => {
 
   let url = "#"
   try {
-    url = hoverTarget.getAttribute("href")
+    url = popupTarget.getAttribute("href")
   } catch (_) {}
 
   // If it's got transparency, we don't want to cut it off (could be icon or logo) = use contain. Otherwise, it looks prettier to use cover
@@ -345,7 +361,7 @@ const SummaryPopup = () => {
       {animationState != "opening" && (
       <div className="inner-popup flex flex-col overflow-y-auto overscroll-none"
       style={{"--maxHeight": `${maxHeight}px`} as React.CSSProperties}>
-        {image.url && (
+        {image && (
           <img
             onLoad={() => setAnimationState("open")}
             src={image.url}
