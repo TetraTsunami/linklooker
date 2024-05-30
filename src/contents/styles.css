@@ -82,14 +82,12 @@
 }
 
 .image-contain { /* Used for logos, left align */
-  max-height: 100px;
   padding: 0.5rem;
   object-fit: contain;
   align-self: start;
 }
 
 .image-cover { /* Used for backgrounds that we can cut off */
-  max-height: 200px;
   width: 100%;
   object-fit: cover;
 }

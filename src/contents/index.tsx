@@ -323,11 +323,16 @@ const SummaryPopup = () => {
     return "image-cover"
   }
 
-  const maxHeight = position.top > window.innerHeight / 2 ? position.top : window.innerHeight - position.top
+  // Position.top is defined only if the popup is anchored to the bottom of an element
+  // This means that the popup is expanding towards the bottom of the screen, so maxHeight is the distance before it goes offscreen
+  const maxHeight = Math.round(position.top ? window.innerHeight - position.top : window.innerHeight - position.bottom)
+  // Shrink the image for tiny popups
+  const imageType = getImageType()
+  const imageMaxHeight = imageType == "image-contain" ? Math.min(maxHeight / 3, 100) : Math.min(maxHeight / 3, 200)
 
   return (
     <div
-      className={`fixed min-h-12 w-[450px] overflow-clip rounded-xl z-10 text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
+      className={`fixed min-h-[30px] w-[450px] overflow-clip rounded-xl z-10 text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
         ${animationState == "closed" || animationState == "closing" ? "hide" : "hover-popup"}`}
       style={{
         top: position.top,
@@ -338,14 +343,15 @@ const SummaryPopup = () => {
       }}>
       {animationState == "opening" && <div className="loader" />}
       {animationState != "opening" && (
-      <div className="inner-popup flex flex-col overflow-y-auto"
-      style={{"--maxHeight": `${maxHeight - 80}px`} as React.CSSProperties}>
+      <div className="inner-popup flex flex-col overflow-y-auto overscroll-none"
+      style={{"--maxHeight": `${maxHeight}px`} as React.CSSProperties}>
         {image.url && (
           <img
             onLoad={() => setAnimationState("open")}
             src={image.url}
             ref={imageRef}
-            className={getImageType()}
+            className={imageType}
+            style={{"maxHeight": `${imageMaxHeight}px`}}
           />
         )}
         {(title || description || aiSummary) && (
@@ -368,10 +374,11 @@ const SummaryPopup = () => {
             </div>
           )}
         </div>)}
+        {publisher && (
+        <div className="bg-gray-700/50 px-4 py-3">
+          <p className="text-sm text-gray-400">{publisher}</p>
+        </div>)}
       </div>)}
-      {publisher && animationState != "opening" && <div className="w-full bg-gray-700/50 px-4 py-3">
-        <p className="text-sm text-gray-400">{publisher}</p>
-      </div>}
     </div>
   )
 }

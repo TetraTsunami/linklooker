@@ -10,8 +10,10 @@ const onClicked = () => {
 }
 
 if (process.env.PLASMO_BROWSER === "firefox") {
+  // @ts-ignore
   browser.runtime.onInstalled.addListener(onInstalled)
-  browser.action.onClicked.addListener(onClicked);
+  // @ts-ignore
+  browser.browserAction.onClicked.addListener(onClicked);
 } else {
   chrome.runtime.onInstalled.addListener(onInstalled);
   chrome.action.onClicked.addListener(onClicked);
