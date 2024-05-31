@@ -61,11 +61,7 @@ const SummaryPopup = () => {
   const [animationState, setAnimationState] = useState("closed" as "closed" | "opening" | "open" | "closing")
   const [title, setTitle] = useState("")
   const [publisher, setPublisher] = useState("")
-  const [image, setImage] = useState({
-    url: "",
-    width: "",
-    height: "",
-  })
+  const [imageUrl, setImageUrl] = useState("")
   const [description, setDescription] = useState("")
   const [aiSummary, setSummary] = useState("")
   const imageRef = useRef<HTMLImageElement>(null)
@@ -76,7 +72,7 @@ const SummaryPopup = () => {
     setDescription("")
     setSummary("")
     setPublisher("")
-    setImage({ url: "", width: "", height: "" })
+    setImageUrl("")
   }
 
   const openPopup = async () => {
@@ -215,12 +211,7 @@ const SummaryPopup = () => {
     }
     setTitle(tagData.title)
     setPublisher(tagData.siteName)
-    setImage({
-      "url": "",
-      "width": "",
-      "height": "",
-      ...tagData.image
-    })
+    setImageUrl(tagData.image.url || "")
     setDescription(tagData.description)
     if (!tagData.image) {
       setAnimationState("open")
@@ -329,19 +320,17 @@ const SummaryPopup = () => {
 
   // If it's got transparency, we don't want to cut it off (could be icon or logo) = use contain. Otherwise, it looks prettier to use cover
   const getImageType = () => {
-    if (!image || !image.url) {return}
-    if (imageRef && imageRef.current && imageRef.current.width < 100 && imageRef.current.height < 100) {
-      return "image-contain"
+    if (!imageUrl) {return}
+    if (imageRef && imageRef.current) {
+      if (Math.abs(imageRef.current.width / imageRef.current.height - 1) < 0.1) return "image-contain"
+      if (imageRef.current.width < 100 || imageRef.current.height < 100) return "image-contain"
     }
-    if (image.url.includes("png") || image.url.includes("svg") || image.url.includes("gif")) {
-      return "image-contain"
-    }
-    return "image-cover"
+    return /svg|gif/.test(imageUrl) ? "image-contain" : "image-cover"
   }
 
   // Position.top is defined only if the popup is anchored to the bottom of an element
   // This means that the popup is expanding towards the bottom of the screen, so maxHeight is the distance before it goes offscreen
-  const maxHeight = Math.round(position.top ? window.innerHeight - position.top : window.innerHeight - position.bottom)
+  const maxHeight = Math.round(position.top ? window.innerHeight - position.top : window.innerHeight - position.bottom) - 10
   // Shrink the image for tiny popups
   const imageType = getImageType()
   const imageMaxHeight = imageType == "image-contain" ? Math.min(maxHeight / 3, 100) : Math.min(maxHeight / 3, 200)
@@ -358,18 +347,15 @@ const SummaryPopup = () => {
         display: animationState == "closed" ? "none" : "block"
       }}>
       {animationState == "opening" && <div className="loader" />}
-      {animationState != "opening" && (
-      <div className="inner-popup flex flex-col overflow-y-auto overscroll-none"
+      <div className={`flex flex-col overflow-y-auto overscroll-none ${animationState != "opening" ? "inner-popup" : "none" }`}
       style={{"--maxHeight": `${maxHeight}px`} as React.CSSProperties}>
-        {image && (
-          <img
-            onLoad={() => setAnimationState("open")}
-            src={image.url}
-            ref={imageRef}
-            className={imageType}
-            style={{"maxHeight": `${imageMaxHeight}px`}}
-          />
-        )}
+        <img // In Firefox, CSP may block the image if the img tag is created with a src attribute. We can't do {imageUrl && ...} nonsense here.
+          onLoad={() => setAnimationState((current) => current == "opening" ? "open" : current)}
+          src={imageUrl} // This is blank initially and reset to be blank occasionally, so it should be fine. 
+          ref={imageRef}
+          className={imageType}
+          style={{"maxHeight": `${imageMaxHeight}px`}}
+        />
         {(title || description || aiSummary) && (
         <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
           {title && <a href={url} className="text-lg font-bold hover:underline">{title}</a>}
@@ -394,7 +380,7 @@ const SummaryPopup = () => {
         <div className="bg-gray-700/50 px-4 py-3">
           <p className="text-sm text-gray-400">{publisher}</p>
         </div>)}
-      </div>)}
+      </div>
     </div>
   )
 }

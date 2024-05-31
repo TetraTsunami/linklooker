@@ -10,6 +10,10 @@
   animation: shrinkDown 0.1s ease-in forwards;
 }
 
+.none {
+  display: none;
+}
+
 .summary {
   margin-left: 12px;
 }

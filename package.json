@@ -1,7 +1,7 @@
 {
   "name": "link-looker",
   "displayName": "LinkLooker",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Previews links using ChatGPT when you hover over them",
   "author": "Tsuni <tsuni@tsuni.dev>",
   "scripts": {
