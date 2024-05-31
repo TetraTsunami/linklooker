@@ -83,6 +83,13 @@ const SummaryPopup = () => {
     await updatePopup()
   }
 
+  /**
+   * Sets the animation state to "open" when the image has loaded. This is to prevent the popup from opening before the image is ready.
+   */
+  const imageLoaded = () => {
+    setAnimationState((current) => current == "opening" ? "open" : current)
+  }
+
   const closePopup = async () => {
     // closePopup can be called while the popup is closed (clicking), immediately after openPopup (error, etc.), and also several times in a short period (scrolling)
     // Case #1: do nothing if the state is already closed
@@ -214,11 +221,11 @@ const SummaryPopup = () => {
     setImageUrl(tagData.image.url || "")
     setDescription(tagData.description)
     if (!tagData.image) {
-      setAnimationState("open")
+      imageLoaded()
     } else {
       setTimeout(() => {
-        setAnimationState("open")
-      }, 2000) // Wait for image to load
+        imageLoaded()
+      }, 1500)
     }
   }
 
@@ -350,7 +357,7 @@ const SummaryPopup = () => {
       <div className={`flex flex-col overflow-y-auto overscroll-none ${animationState != "opening" ? "inner-popup" : "none" }`}
       style={{"--maxHeight": `${maxHeight}px`} as React.CSSProperties}>
         <img // In Firefox, CSP may block the image if the img tag is created with a src attribute. We can't do {imageUrl && ...} nonsense here.
-          onLoad={() => setAnimationState((current) => current == "opening" ? "open" : current)}
+          onLoad={imageLoaded}
           src={imageUrl} // This is blank initially and reset to be blank occasionally, so it should be fine. 
           ref={imageRef}
           className={imageType}
