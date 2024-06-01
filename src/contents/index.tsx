@@ -291,20 +291,6 @@ const SummaryPopup = () => {
   })
 
   // Dismiss on scroll (the popup doesn't move with the page)
-  useEffect(() => {
-    const callback = async (event: { target: Element }) => {
-      if (event.target.tagName !== "PLASMO-CSUI") {
-        closePopup()
-      }
-    }
-    // @ts-ignore ts(2769)
-    window.addEventListener("scroll", callback)
-    return () => {
-      // @ts-ignore ts(2769)
-      window.removeEventListener("scroll", callback)
-    }
-  })
-
   // Dismiss on clicking outside
   useEffect(() => {
     const callback = async (event: { target: Element }) => {
@@ -313,10 +299,27 @@ const SummaryPopup = () => {
       }
     }
     // @ts-ignore ts(2769)
+    window.addEventListener("scroll", callback)
+    // @ts-ignore ts(2769)
     document.addEventListener("click", callback)
     return () => {
       // @ts-ignore ts(2769)
+      window.removeEventListener("scroll", callback)
+      // @ts-ignore ts(2769)
       document.removeEventListener("click", callback)
+    }
+  })
+
+  // Reposition on window resize
+  useEffect(() => {
+    const callback = async () => {
+      if (popupTarget) {
+        movePopup(popupTarget)
+      }
+    }
+    window.addEventListener("resize", callback)
+    return () => {
+      window.removeEventListener("resize", callback)
     }
   })
 
