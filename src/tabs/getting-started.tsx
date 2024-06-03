@@ -3,7 +3,7 @@ import "./styles.css"
 import icon from "data-base64:/assets/icon.png"
 import { useStorage } from "@plasmohq/storage/hook"
 
-import SummaryPopup from "../contents/index"
+import ContentPopup from "../contents/index"
 
 function FakePopup() {
   const [animationState, setAnimationState] = useState("opening")
@@ -76,7 +76,7 @@ function GettingStartedPage() {
   return (
     <main
       className="min-h-screen bg-neutral-800 text-lg text-white">
-      <SummaryPopup />
+      <ContentPopup />
       <div className="container mx-auto flex flex-col items-center gap-12 p-4">
         <div className="h-[340px]">
           <FakePopup />

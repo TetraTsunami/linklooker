@@ -51,7 +51,7 @@ let keyLock = false // using like a state variable, but we don't need to rerende
 let hoverTarget: Element | undefined = null
 let popupTarget: Element | undefined = null // Once the popup is open, this is the target element
 
-const SummaryPopup = () => {
+const ContentPopup = () => {
   const [position, setPosition] = useState({ top: 0, left: 0 } as {
     top?: number
     left?: number
@@ -268,7 +268,6 @@ const SummaryPopup = () => {
   // Summon on releasing shift
   useEffect(() => {
     const callback = async (event: { key: string }) => {
-      if ( document.activeElement !== document.body ) return
       keyLock = (event.key !== "Shift")
     }
     window.addEventListener("keydown", callback)
@@ -280,7 +279,9 @@ const SummaryPopup = () => {
   // Summon on releasing shift
   useEffect(() => {
     const callback = async (event: { key: string }) => {
-      if (event.key === "Shift" && hoverTarget && !keyLock) {
+      if (document.activeElement === document.body && // If there isn't a focused element (text box)
+          event.key === "Shift" && 
+          hoverTarget && !keyLock) {
         await openPopup()
       }
     }
@@ -395,4 +396,4 @@ const SummaryPopup = () => {
   )
 }
 
-export default SummaryPopup
+export default ContentPopup
