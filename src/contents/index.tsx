@@ -47,6 +47,18 @@ const getConfig = async () => {
   return config
 }
 
+chrome.runtime.onMessage.addListener((msg, sender, response) => { // Get HTML of current page
+  if (msg.name === "DOMInfo") {
+    console.log("Received DOMInfo request")
+    try {
+      response({ html: document.documentElement.outerHTML })
+    } catch (err) {
+      response({ error: err.message })
+    }
+    return true
+  }
+})
+
 let keyLock = false // using like a state variable, but we don't need to rerender when it changes. Also, needs faster updates than state variables get.
 let hoverTarget: Element | undefined = null
 let popupTarget: Element | undefined = null // Once the popup is open, this is the target element
@@ -146,40 +158,6 @@ const ContentPopup = () => {
   }
 
   /**
-   * Fetches the "structural" data of a webpage.
-   * This includes its title and description (OpenGraph/Head tags), and parsed body text content (Readability.js)
-   * @param url The URL of the webpage
-   * @returns An object containing the meta data and parsed content {meta, readability}
-   */
-  const getTagData = async (url: string) => {
-    const resp = await sendToBackground({ name: "scrape", body: { url } })
-    if (resp.error) {
-      throw new Error(resp.error)
-    }
-    const document = new DOMParser().parseFromString(resp.html, "text/html")
-    const reader = new Readability(document)
-    const parsed = reader.parse()
-    const tags = resp.meta as Meta // Data from html tags
-    // There's some overlap, so we'll return a merged object with only the keys we need
-    if (!parsed) {
-      return {
-        title: tags.title,
-        description: tags.description,
-        image: tags.image,
-        body: "",
-        siteName: "",
-      }
-    }
-    return {
-      title: tags.title || parsed.title,
-      description: tags.description || parsed.excerpt,
-      image: tags.image,
-      body: parsed.textContent || "",
-      siteName: parsed.siteName || "",
-    }
-  }
-
-  /**
    * Uses the OpenAI API to generate a more extensive summary for the given content. Output is appended to the description state.
    * @param tagData The data to generate a summary for
    */
@@ -232,8 +210,9 @@ const ContentPopup = () => {
   const updatePopup = async () => {
     try {
       const url = getURL()
-      const tagData = await getTagData(url)
-      // Title is the only thing we can guarantee will be there. If it's the only thing we have, it's not worth showing
+      const tagData = await chrome.runtime.sendMessage({ name: "scrape", url })
+      if (tagData.error) throw new Error(tagData.error)
+      // It is not worth showing just a title.
       if (!tagData.description && !tagData.body && !tagData.image) {
         throw new Error("No data found")
       }
