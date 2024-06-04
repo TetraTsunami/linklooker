@@ -1,10 +1,8 @@
-import { Readability } from "@mozilla/readability"
 import cssText from "data-text:~contents/styles.css"
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam } from "openai/resources"
 import { useEffect, useRef, useState } from "react"
 
-import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 import type { PlasmoCSConfig } from "plasmo"
 import { defaultSettings } from "~defaults"
