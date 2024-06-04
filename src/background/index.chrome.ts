@@ -6,7 +6,9 @@ import { installedHandler, mergeMeta } from './background';
 
 const metaFromHTML = (html: string, url: string) => {
   const doc = (new JSDOM(html)).window.document
-
+  let baseEl = doc.createElement('base'); // https://stackoverflow.com/questions/55232202/optional-baseuri-location-in-domparser
+  baseEl.setAttribute('href', url);
+  doc.head.append(baseEl);
   const title = (doc.querySelector('meta[property="og:title"]') as HTMLMetaElement)?.content ||
     doc.querySelector('title')?.textContent;
   const description = (doc.querySelector('meta[property="og:description"]') as HTMLMetaElement)?.content ||
