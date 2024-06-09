@@ -127,7 +127,7 @@ const Popup = () => {
           if (resp.error) throw new Error(resp.error)
           const html = resp.html
           chrome.runtime.sendMessage(
-            { name: "parseHTML", url: tabs[0].url, html },
+            { name: "parseHTML", target: "background", url: tabs[0].url, html },
             (tagData) => {
               if (tagData.error) throw new Error("Error parsing HTML: " + tagData.error)
               if (!tagData.description && !tagData.body && !tagData.image) {

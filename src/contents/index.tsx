@@ -107,7 +107,9 @@ const ContentPopup = () => {
     // Case #3: it can't interfere with itself, so we need to assume that "closing" means another instance already set the timeout
     setAnimationState((current) => {
       if (current == "opening" || current == "open") {
-        setTimeout(() => setAnimationState("closed"), 300)
+        setTimeout(() => setAnimationState((current) => {
+          return (current == "closing") ? "closed" : current
+        }), 300)
         return "closing"
       }
       return current
@@ -121,15 +123,16 @@ const ContentPopup = () => {
    */
   const movePopup = (target: Element) => {
     // Decide where to place
+    const WIDTH = 450
     const bounds = target.getBoundingClientRect()
-    const vertical =
+    const vertical = // If the top of the element is above the middle of the screen, place the popup below it. Otherwise, place it above.
       bounds.top < window.innerHeight / 2
         ? { top: bounds.bottom }
         : { bottom: window.innerHeight - bounds.top }
-    const horizontal =
-      bounds.right < window.innerWidth / 2
+    const horizontal = 
+      bounds.left + WIDTH < window.innerWidth
         ? { left: bounds.left }
-        : { right: window.innerWidth - bounds.right }
+        : { right: 0 }
     setPosition({ ...vertical, ...horizontal })
   }
 
@@ -208,7 +211,7 @@ const ContentPopup = () => {
   const updatePopup = async () => {
     try {
       const url = getURL()
-      const tagData = await chrome.runtime.sendMessage({ name: "scrape", url })
+      const tagData = await chrome.runtime.sendMessage({ name: "scrape", target: "background", url })
       if (tagData.error) throw new Error(tagData.error)
       // It is not worth showing just a title.
       if (!tagData.description && !tagData.body && !tagData.image) {
@@ -310,8 +313,9 @@ const ContentPopup = () => {
   const getImageType = () => {
     if (!imageUrl) {return}
     if (imageRef && imageRef.current) {
-      if (Math.abs(imageRef.current.width / imageRef.current.height - 1) < 0.1) return "image-contain"
-      if (imageRef.current.width < 100 || imageRef.current.height < 100) return "image-contain"
+      const height = imageRef.current.naturalHeight
+      const width = imageRef.current.naturalWidth
+      if (Math.abs(width / height - 1) < 0.1 || width < 100 || height < 100) return "image-contain"
     }
     return /svg|gif/.test(imageUrl) ? "image-contain" : "image-cover"
   }
@@ -325,7 +329,7 @@ const ContentPopup = () => {
 
   return (
     <div
-      className={`fixed min-h-[30px] w-[450px] overflow-clip rounded-xl z-10 text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
+      className={`fixed min-h-[30px] max-w-[100vw] w-[450px] overflow-clip rounded-xl z-10 text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
         ${animationState == "closed" || animationState == "closing" ? "hide" : "hover-popup"}`}
       style={{
         top: position.top,

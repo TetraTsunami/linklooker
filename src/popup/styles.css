@@ -55,7 +55,6 @@ body {
   object-fit: cover;
   max-height: 200px;
   border-radius: 8px;
-  box-shadow: #0006 0px 10px 20px;
 }
 
 /* https://css-loaders.com/spinner/ */
