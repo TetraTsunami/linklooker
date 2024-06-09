@@ -1,7 +1,7 @@
 {
   "name": "link-looker",
   "displayName": "LinkLooker",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Previews links using ChatGPT when you hover over them",
   "author": "Tsuni <tsuni@tsuni.dev>",
   "scripts": {
@@ -13,7 +13,7 @@
   "dependencies": {
     "@mozilla/readability": "^0.5.0",
     "@plasmohq/storage": "^1.10.0",
-    "jsdom": "^24.1.0",
+    "linkedom": "^0.18.3",
     "openai": "^4.38.5",
     "plasmo": "0.84.2",
     "react": "18.2.0",
@@ -23,7 +23,6 @@
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
     "@types/chrome": "0.0.258",
     "@types/firefox-webext-browser": "^120.0.3",
-    "@types/jsdom": "^21.1.7",
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
