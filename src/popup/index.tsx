@@ -97,7 +97,7 @@ const Popup = () => {
   const renderTagPopup = (tagData: {
     title: any
     description: string
-    image: any
+    imageUrl: string
     siteName: string
   }) => {
     if (!tagData.title && !tagData.description) {
@@ -105,9 +105,9 @@ const Popup = () => {
     }
     setTitle(tagData.title)
     setPublisher(tagData.siteName)
-    setImageUrl(tagData.image.url || "")
+    setImageUrl(tagData.imageUrl || "")
     setDescription(tagData.description)
-    if (!tagData.image) {
+    if (!tagData.imageUrl) {
       imageLoaded()
     } else {
       setTimeout(() => {
@@ -117,9 +117,9 @@ const Popup = () => {
   }
 
   const updatePopup = async () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { name: "DOMInfo" }, (resp) => {
-        try {
+    try {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.sendMessage(tabs[0].id, { name: "DOMInfo" }, (resp) => {
           if (!resp) {
             window.close()
             return
@@ -142,24 +142,21 @@ const Popup = () => {
               }
             }
           )
-        } catch (e) {
-          setDescription(e)
-          setIsDoneLoading(true)
-        }
+        })
       })
-    })
+    } catch (e) {
+      setDescription(e)
+      setIsDoneLoading(true)
+    }
   }
 
   // If it's got transparency, we don't want to cut it off (could be icon or logo) = use contain. Otherwise, it looks prettier to use cover
   const getImageType = () => {
-    if (!imageUrl) {
-      return
-    }
+    if (!imageUrl) {return}
     if (imageRef && imageRef.current) {
-      if (Math.abs(imageRef.current.width / imageRef.current.height - 1) < 0.1)
-        return "image-contain"
-      if (imageRef.current.width < 100 || imageRef.current.height < 100)
-        return "image-contain"
+      const height = imageRef.current.naturalHeight
+      const width = imageRef.current.naturalWidth
+      if (Math.abs(width / height - 1) < 0.1 || width < 100 || height < 100) return "image-contain"
     }
     return /svg|gif/.test(imageUrl) ? "image-contain" : "image-cover"
   }
@@ -173,7 +170,7 @@ const Popup = () => {
       className={`popup flex flex-col items-center overflow-clip bg-acorn-bg-1 text-base text-white`}>
       {!isDoneLoading && <div className="loader" />}
       <div
-        className={`flex flex-col overflow-y-auto overscroll-none ${!isDoneLoading && "hidden"}`}
+        className={`flex flex-col overflow-y-auto max-w-full overscroll-none ${!isDoneLoading && "hidden"}`}
         style={{ "--maxHeight": `700px` } as React.CSSProperties}>
         <img // In Firefox, CSP may block the image if the img tag is created with a src attribute. We can't do {imageUrl && ...} nonsense here.
           onLoad={imageLoaded}

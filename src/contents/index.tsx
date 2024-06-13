@@ -19,16 +19,6 @@ export const getStyle = () => {
   return style
 }
 
-interface Meta {
-  title: string,
-  description?: string,
-  image?: {
-    url: string,
-    width?: string,
-    height?: string
-  },
-}
-
 const settings = new Storage()
 
 const getConfig = async () => {
@@ -47,7 +37,6 @@ const getConfig = async () => {
 
 chrome.runtime.onMessage.addListener((msg, sender, response) => { // Get HTML of current page
   if (msg.name === "DOMInfo") {
-    console.log("Received DOMInfo request")
     try {
       response({ html: document.documentElement.outerHTML })
     } catch (err) {
@@ -191,15 +180,15 @@ const ContentPopup = () => {
     }
   }
 
-  const renderTagPopup = (tagData: { title: any; description: string; image: any; siteName: string }) => {
+  const renderTagPopup = (tagData: { title: any; description: string; imageUrl: string; siteName: string }) => {
     if (!tagData.title && !tagData.description) {
       throw new Error("No data found")
     }
     setTitle(tagData.title)
     setPublisher(tagData.siteName)
-    setImageUrl(tagData.image.url || "")
+    setImageUrl(tagData.imageUrl)
     setDescription(tagData.description)
-    if (!tagData.image) {
+    if (!tagData.imageUrl) {
       imageLoaded()
     } else {
       setTimeout(() => {
@@ -339,7 +328,7 @@ const ContentPopup = () => {
         display: animationState == "closed" ? "none" : "block"
       }}>
       {animationState == "opening" && <div className="loader" />}
-      <div className={`flex flex-col overflow-y-auto overscroll-none ${animationState != "opening" ? "inner-popup" : "none" }`}
+      <div className={`flex flex-col overflow-y-auto max-w-full overscroll-none ${animationState != "opening" ? "inner-popup" : "none" }`}
       style={{"--maxHeight": `${maxHeight}px`} as React.CSSProperties}>
         <img // In Firefox, CSP may block the image if the img tag is created with a src attribute. We can't do {imageUrl && ...} nonsense here.
           onLoad={imageLoaded}
