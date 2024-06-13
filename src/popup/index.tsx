@@ -128,8 +128,9 @@ const Popup = () => {
         })
       })
     } catch (e) {
-      setDescription(e)
-      setIsDoneLoading(true)
+      setTitle("Error")
+      setDescription(() => e)
+      setIsDoneLoading(() => true)
     }
   }
 
