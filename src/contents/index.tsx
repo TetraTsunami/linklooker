@@ -248,10 +248,19 @@ const ContentPopup = () => {
     }
   })
 
+  const isElementEditable = (element) => {
+    let value = element.contentEditable;
+    while (value === "inherit" && element.parentElement) {
+        element = element.parentElement;
+        value = element.contentEditable;
+    }
+    return value === "inherit" || value === "false" ? false : true;
+}
+
   // Summon on releasing shift
   useEffect(() => {
     const callback = async (event: { key: string }) => {
-      if (document.activeElement === document.body && // If there isn't a focused element (text box)
+      if (!isElementEditable(document.activeElement) && // If there isn't a focused text box (discord, youtube comments)
           event.key === "Shift" && 
           hoverTarget && !keyLock) {
         await openPopup()
