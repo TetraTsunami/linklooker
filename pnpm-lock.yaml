@@ -23,6 +23,9 @@ importers:
       plasmo:
         specifier: 0.84.2
         version: 0.84.2(@swc/core@1.5.0(@swc/helpers@0.5.10))(@swc/helpers@0.5.10)(lodash@4.17.21)(postcss@8.4.38)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(srcset@4.0.0)
+      preact:
+        specifier: 10.22.0
+        version: 10.22.0
       react:
         specifier: 18.2.0
         version: 18.2.0
@@ -2744,6 +2747,9 @@ packages:
   posthtml@0.16.6:
     resolution: {integrity: sha512-JcEmHlyLK/o0uGAlj65vgg+7LIms0xKXe60lcDOTU7oVX/3LuEuLwrQpW3VJ7de5TaFKiW4kWkaIpJL42FEgxQ==}
     engines: {node: '>=12.0.0'}
+
+  preact@10.22.0:
+    resolution: {integrity: sha512-RRurnSjJPj4rp5K6XoP45Ui33ncb7e4H7WiOHVpjbkvqvA3U+N8Z6Qbo0AE6leGYBV66n8EhEaFixvIu3SkxFw==}
 
   prebuild-install@7.1.2:
     resolution: {integrity: sha512-UnNke3IQb6sgarcZIDU3gbMeTp/9SSU1DAIkil7PrqG1vZlBtY5msYccSKSHDqa3hNg436IXK+SNImReuA1wEQ==}
@@ -6288,6 +6294,8 @@ snapshots:
     dependencies:
       posthtml-parser: 0.11.0
       posthtml-render: 3.0.0
+
+  preact@10.22.0: {}
 
   prebuild-install@7.1.2:
     dependencies:
