@@ -200,7 +200,10 @@ const ContentPopup = () => {
   const updatePopup = async () => {
     try {
       const url = getURL()
-      const tagData = await chrome.runtime.sendMessage({ name: "scrape", target: "background", url })
+      // Plasmo doesn't convert `chrome` to `browser` when this component is used in a tab page
+      const tagData = (process.env.PLASMO_BROWSER == "firefox") ? 
+        await browser.runtime.sendMessage({ name: "scrape", target: "background", url }) :
+        await chrome.runtime.sendMessage({ name: "scrape", target: "background", url })
       if (tagData.error) throw new Error(tagData.error)
       // It is not worth showing just a title.
       if (!tagData.description && !tagData.body && !tagData.image) {
