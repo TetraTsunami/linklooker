@@ -1,41 +1,25 @@
 import cssText from "data-text:~contents/styles.css"
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam } from "openai/resources"
+import type { PlasmoCSConfig } from "plasmo"
 import { useEffect, useRef, useState } from "react"
 
-import { Storage } from "@plasmohq/storage"
-import type { PlasmoCSConfig } from "plasmo"
-import { defaultSettings } from "~defaults"
+import { getConfig } from "~defaults"
 
 export const config: PlasmoCSConfig = {
-    matches: ["<all_urls>"],
-    exclude_matches: ["*://*.wikipedia.com/*"],
-    css: ["./global.css"],
-  }
-  
+  matches: ["<all_urls>"],
+  exclude_matches: ["*://*.wikipedia.com/*"],
+  css: ["./global.css"]
+}
+
 export const getStyle = () => {
   const style = document.createElement("style")
   style.textContent = cssText
   return style
 }
 
-const settings = new Storage()
-
-const getConfig = async () => {
-  // Grab our config
-  const config = {
-    apiKey: await settings.get("openai-key"),
-    baseURL: (await settings.get("openai-baseURL")) || defaultSettings.baseURL,
-    model: (await settings.get("openai-model")) || defaultSettings.model,
-    prompt: (await settings.get("system-prompt")) || defaultSettings.prompt,
-    inputTokens: (parseInt(await settings.get("input-tokens"))) || defaultSettings.inputTokens,
-    outputTokens: (parseInt(await settings.get("output-tokens"))) || defaultSettings.outputTokens,
-    aiThreshold: (parseInt(await settings.get("ai-threshold"))) || defaultSettings.aiThreshold,
-  }
-  return config
-}
-
-chrome.runtime.onMessage.addListener((msg, sender, response) => { // Get HTML of current page
+chrome.runtime.onMessage.addListener((msg, sender, response) => {
+  // Get HTML of current page
   if (msg.name === "DOMInfo") {
     try {
       response({ html: document.documentElement.outerHTML })
@@ -57,12 +41,15 @@ const ContentPopup = () => {
     right?: number
     bottom?: number
   })
-  const [animationState, setAnimationState] = useState("closed" as "closed" | "opening" | "open" | "closing")
+  const [animationState, setAnimationState] = useState(
+    "closed" as "closed" | "opening" | "open" | "closing"
+  )
   const [title, setTitle] = useState("")
   const [publisher, setPublisher] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [description, setDescription] = useState("")
   const [aiSummary, setSummary] = useState("")
+  const [imageType, setImageType] = useState("image-cover")
   const imageRef = useRef<HTMLImageElement>(null)
 
   const resetState = async () => {
@@ -86,7 +73,8 @@ const ContentPopup = () => {
    * Sets the animation state to "open" when the image has loaded. This is to prevent the popup from opening before the image is ready.
    */
   const imageLoaded = () => {
-    setAnimationState((current) => current == "opening" ? "open" : current)
+    setAnimationState((current) => (current == "opening" ? "open" : current))
+    setImageType(getImageType())
   }
 
   const closePopup = async () => {
@@ -96,14 +84,18 @@ const ContentPopup = () => {
     // Case #3: it can't interfere with itself, so we need to assume that "closing" means another instance already set the timeout
     setAnimationState((current) => {
       if (current == "opening" || current == "open") {
-        setTimeout(() => setAnimationState((current) => {
-          return (current == "closing") ? "closed" : current
-        }), 300)
+        setTimeout(
+          () =>
+            setAnimationState((current) => {
+              return current == "closing" ? "closed" : current
+            }),
+          300
+        )
         return "closing"
       }
       return current
     })
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 300))
   }
 
   /**
@@ -118,7 +110,7 @@ const ContentPopup = () => {
       bounds.top < window.innerHeight / 2
         ? { top: bounds.bottom }
         : { bottom: window.innerHeight - bounds.top }
-    const horizontal = 
+    const horizontal =
       bounds.left + WIDTH < window.innerWidth
         ? { left: bounds.left }
         : { right: 0 }
@@ -141,26 +133,44 @@ const ContentPopup = () => {
     if (!url || url.startsWith("#") || url.startsWith("javascript")) {
       throw new Error("Invalid URL")
     }
-    if (url.startsWith("/")) {
-      url = window.location.origin + url
+    if (!url.startsWith("http")) {
+      url = new URL(url, window.location.href).href
     }
     return url
   }
 
-  /**
-   * Uses the OpenAI API to generate a more extensive summary for the given content. Output is appended to the description state.
-   * @param tagData The data to generate a summary for
-   */
-  const getOAIData = async (tagData: { title: string; description: string; body: string; }) => {
+  const getOAIData = async (
+    tagData: {
+      title: string
+      description: string
+      body: string
+    },
+    output: (value: React.SetStateAction<string>) => void,
+    context?: string
+  ) => {
     const config = await getConfig()
-    if (!tagData.body) { return } // Not much to summarize, innit?
-    if (!config.apiKey) { return } // Skip if we don't have an API key
-    if (tagData.description && tagData.description.length > config.aiThreshold) { return } // Skip if the description is long enough already
+    if (!tagData.body) {
+      return
+    } // Not much to summarize, innit?
+    if (!config.apiKey) {
+      return
+    } // Skip if we don't have an API key
+    if (
+      tagData.description &&
+      tagData.description.length > config.aiThreshold
+    ) {
+      return
+    } // Skip if the description is long enough already
     // Maybe the text of the link is ambiguous and the user wants to know how the content relates
-    const linkText = popupTarget.textContent || "Unknown"
     const messages = [
       { role: "system", content: config.prompt },
-      { role: "user", content: `Context: "${linkText}"\nContent: "${tagData.body.slice(0, config.inputTokens * 3)}[...]\nSummary:"` },
+      {
+        role: "user",
+        content:
+          (context ? `# Context\n${context}\n` : "") +
+          `# Content\n${tagData.body.slice(0, config.inputTokens * 3)}[...]\n` +
+          `# Summary`
+      }
     ] as ChatCompletionMessageParam[]
     const openai = new OpenAI({
       apiKey: config.apiKey,
@@ -172,15 +182,20 @@ const ContentPopup = () => {
       model: config.model,
       messages: messages,
       stream: true,
-      max_tokens: config.outputTokens,
+      max_tokens: config.outputTokens
     })
     for await (const chunk of stream) {
       if (!chunk.choices[0].delta) continue
-      setSummary((prev) => prev + (chunk.choices[0].delta.content || ""))
+      output((prev) => prev + (chunk.choices[0].delta.content || ""))
     }
   }
 
-  const renderTagPopup = (tagData: { title: any; description: string; imageUrl: string; siteName: string }) => {
+  const renderTagPopup = (tagData: {
+    title: any
+    description: string
+    imageUrl: string
+    siteName: string
+  }) => {
     if (!tagData.title && !tagData.description) {
       throw new Error("No data found")
     }
@@ -201,9 +216,18 @@ const ContentPopup = () => {
     try {
       const url = getURL()
       // Plasmo doesn't convert `chrome` to `browser` when this component is used in a tab page
-      const tagData = (process.env.PLASMO_BROWSER == "firefox") ? 
-        await browser.runtime.sendMessage({ name: "scrape", target: "background", url }) :
-        await chrome.runtime.sendMessage({ name: "scrape", target: "background", url })
+      const tagData =
+        process.env.PLASMO_BROWSER == "firefox"
+          ? await browser.runtime.sendMessage({
+              name: "scrape",
+              target: "background",
+              url
+            })
+          : await chrome.runtime.sendMessage({
+              name: "scrape",
+              target: "background",
+              url
+            })
       if (tagData.error) throw new Error(tagData.error)
       // It is not worth showing just a title.
       if (!tagData.description && !tagData.body && !tagData.image) {
@@ -211,7 +235,7 @@ const ContentPopup = () => {
       }
       renderTagPopup(tagData)
       try {
-        await getOAIData(tagData)
+        await getOAIData(tagData, setSummary, popupTarget.textContent)
       } catch (e) {
         console.warn("Error getting OpenAI completion: ", e)
         setSummary("Error getting summary: " + e)
@@ -240,7 +264,7 @@ const ContentPopup = () => {
   // Summon on releasing shift
   useEffect(() => {
     const callback = async (event: { key: string }) => {
-      keyLock = (event.key !== "Shift")
+      keyLock = event.key !== "Shift"
     }
     window.addEventListener("keydown", callback)
     return () => {
@@ -249,20 +273,23 @@ const ContentPopup = () => {
   })
 
   const isElementEditable = (element) => {
-    let value = element.contentEditable;
+    let value = element.contentEditable
     while (value === "inherit" && element.parentElement) {
-        element = element.parentElement;
-        value = element.contentEditable;
+      element = element.parentElement
+      value = element.contentEditable
     }
-    return value === "inherit" || value === "false" ? false : true;
-}
+    return value === "inherit" || value === "false" ? false : true
+  }
 
   // Summon on releasing shift
   useEffect(() => {
     const callback = async (event: { key: string }) => {
-      if (!isElementEditable(document.activeElement) && // If there isn't a focused text box (discord, youtube comments)
-          event.key === "Shift" && 
-          hoverTarget && !keyLock) {
+      if (
+        !isElementEditable(document.activeElement) && // If there isn't a focused text box (discord, youtube comments)
+        event.key === "Shift" &&
+        hoverTarget &&
+        !keyLock
+      ) {
         await openPopup()
       }
     }
@@ -310,23 +337,51 @@ const ContentPopup = () => {
     url = popupTarget.getAttribute("href")
   } catch (_) {}
 
-  // If it's got transparency, we don't want to cut it off (could be icon or logo) = use contain. Otherwise, it looks prettier to use cover
-  const getImageType = () => {
-    if (!imageUrl) {return}
+  const formatSummary = (summary: string) => {
+    const lines = summary
+      .split("\n")
+      .map((line) => line.replace(/^\s*-\s*/, ""))
+    return (
+      <ul className="summary relative flex list-disc flex-col gap-2 pl-4 italic">
+        {lines.map((content, i) => (
+          <li key={i}>
+            {content.split(" ").map((word, i) => (
+              <span key={i} className="word">
+                {word}{" "}
+              </span>
+            ))}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  const getImageType = (): "image-contain" | "image-cover" => {
     if (imageRef && imageRef.current) {
       const height = imageRef.current.naturalHeight
       const width = imageRef.current.naturalWidth
-      if (Math.abs(width / height - 1) < 0.1 || width < 100 || height < 100) return "image-contain"
+      if (Math.abs(width / height - 1) < 0.1 || width < 100 || height < 100)
+        return "image-contain"
+    }
+    if (!imageUrl) {
+      return "image-cover"
     }
     return /svg|gif/.test(imageUrl) ? "image-contain" : "image-cover"
   }
 
   // Position.top is defined only if the popup is anchored to the bottom of an element
   // This means that the popup is expanding towards the bottom of the screen, so maxHeight is the distance before it goes offscreen
-  const maxHeight = Math.round(position.top ? window.innerHeight - position.top : window.innerHeight - position.bottom) - 10
+  const maxHeight =
+    Math.round(
+      position.top
+        ? window.innerHeight - position.top
+        : window.innerHeight - position.bottom
+    ) - 10
   // Shrink the image for tiny popups
-  const imageType = getImageType()
-  const imageMaxHeight = imageType == "image-contain" ? Math.min(maxHeight / 3, 100) : Math.min(maxHeight / 3, 200)
+  const imageMaxHeight =
+    imageType == "image-contain"
+      ? Math.min(maxHeight / 3, 100)
+      : Math.min(maxHeight / 3, 200)
 
   return (
     <div
@@ -340,39 +395,35 @@ const ContentPopup = () => {
         display: animationState == "closed" ? "none" : "block"
       }}>
       {animationState == "opening" && <div className="loader" />}
-      <div className={`flex flex-col overflow-y-auto max-w-full overscroll-none ${animationState != "opening" ? "inner-popup" : "none" }`}
-      style={{"--maxHeight": `${maxHeight}px`} as React.CSSProperties}>
+      <div
+        className={`flex flex-col overflow-y-auto max-w-full overscroll-none ${animationState != "opening" ? "inner-popup" : "none"}`}
+        style={{ "--maxHeight": `${maxHeight}px` } as React.CSSProperties}>
         <img // In Firefox, CSP may block the image if the img tag is created with a src attribute. We can't do {imageUrl && ...} nonsense here.
           onLoad={imageLoaded}
-          src={imageUrl} // This is blank initially and reset to be blank occasionally, so it should be fine. 
+          src={imageUrl} // This is blank initially and reset to be blank occasionally, so it should be fine.
           ref={imageRef}
           className={imageType}
-          style={{"maxHeight": `${imageMaxHeight}px`}}
+          style={{ maxHeight: `${imageMaxHeight}px` }}
         />
         {(title || description || aiSummary) && (
-        <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
-          {title && <a href={url} className="text-lg font-bold hover:underline">{title}</a>}
-          {description && description.split("\n").map((content, i) => (
-            <p key={i}>
-              {content}
-            </p>
-          ))}
-          {aiSummary && (
-            <div className="summary relative flex flex-col gap-2 italic">
-              {aiSummary.split("\n").map((content, i) => (
-                <p key={i}>
-                  {content.split(" ").map((word, i) => (
-                    <span key={i} className="word">{word} </span>
-                  ))}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>)}
+          <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
+            {title && (
+              <a href={url} className="text-lg font-bold hover:underline">
+                {title}
+              </a>
+            )}
+            {description &&
+              description
+                .split("\n")
+                .map((content, i) => <p key={i}>{content}</p>)}
+            {aiSummary && formatSummary(aiSummary)}
+          </div>
+        )}
         {publisher && (
-        <div className="bg-gray-700/50 px-4 py-3">
-          <p className="text-sm text-gray-400">{publisher}</p>
-        </div>)}
+          <div className="bg-gray-700/50 px-4 py-3">
+            <p className="text-sm text-gray-400">{publisher}</p>
+          </div>
+        )}
       </div>
     </div>
   )

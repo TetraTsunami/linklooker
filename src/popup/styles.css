@@ -11,19 +11,8 @@ body {
   background: #42414d;
 }
 
-.summary {
-  margin-left: 12px;
-}
-
-.summary::before {
-  content: " ";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -8px;
-  background: rgba(232, 166, 250, 0.50);
-  width: 2px;
-  border-radius: 2px;
+ul.summary li::marker {
+  color: rgba(232, 166, 250, 0.50);
 }
 
 .word {

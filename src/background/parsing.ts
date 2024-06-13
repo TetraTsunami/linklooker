@@ -13,9 +13,12 @@ const parseHTMLMeta = (doc: Document, url: string) => {
     doc.querySelector('title')?.textContent;
   const description = (doc.querySelector('meta[property="og:description"]') as HTMLMetaElement)?.content ||
     (doc.querySelector('meta[name="description"]') as HTMLMetaElement)?.content;
-  const imageUrl = (doc.querySelector('meta[property="og:image"]') as HTMLMetaElement)?.content ||
+  let imageUrl = (doc.querySelector('meta[property="og:image"]') as HTMLMetaElement)?.content ||
       (doc.querySelector('meta[property="og:image:url"]') as HTMLMetaElement)?.content ||
-      getFirstImage(doc, url);
+      (doc.querySelector('img') as HTMLImageElement)?.src;
+  if (!imageUrl.startsWith("http")) {
+    imageUrl = new URL(imageUrl, url).href;
+  }
   return {
     title,
     description,
@@ -27,23 +30,6 @@ const addBaseElement = (doc: Document, url: string) => {
   let baseEl = doc.createElement('base'); // https://stackoverflow.com/questions/55232202/optional-baseuri-location-in-domparser
   baseEl.setAttribute('href', url);
   doc.head.append(baseEl);
-}
-
-const getFirstImage = (doc: Document, url: string) => {
-  // If we don't have an image handed to us, take the first image in the body of the page
-  const img = doc.querySelector('img');
-
-  if (img) {
-    var imgObj: { url: string, width?: string, height?: string } = { url: '' };
-
-    const src = (img as HTMLImageElement).src;
-    // The src might be relative, so we need to convert it to an absolute URL
-    if (src && src.startsWith('http')) {
-      return src;
-    } else {
-      return new URL(src, url).href;
-    }
-  }
 }
 
 const parseReadability = async (doc: Document) => {

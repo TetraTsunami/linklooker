@@ -2,15 +2,23 @@ import { installedHandler } from "./background";
 import { parseAndReply } from "./parsing";
 
 const scrapeHandler = async ({ url }, res: (response?: any) => void) => {
-  const resp = await fetch(url)
-  const html = await resp.text();
-  const doc = new DOMParser().parseFromString(html, "text/html")
-  await parseAndReply(doc, url, res)
+  try {
+    const resp = await fetch(url)
+    const html = await resp.text();
+    const doc = new DOMParser().parseFromString(html, "text/html")
+    await parseAndReply(doc, url, res)
+  } catch (err) {
+    res({ error: err.message })
+  }
 }
 
 const parseHTMLHandler = async ({ html, url }, res: (response?: any) => void) => {
-  const doc = new DOMParser().parseFromString(html, "text/html")
-  await parseAndReply(doc, url, res)
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html")
+    await parseAndReply(doc, url, res)
+  } catch (err) {
+    res({ error: err.message })
+  }
 }
 
 const messageHandler = (req: any, sender, res: (response?: any) => void) => {

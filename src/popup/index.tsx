@@ -1,34 +1,11 @@
-import "./styles.css"
-
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam } from "openai/resources"
+
+import "./styles.css"
+
 import { useEffect, useRef, useState } from "react"
 
-import { Storage } from "@plasmohq/storage"
-
-import { defaultSettings } from "~defaults"
-
-const settings = new Storage()
-
-const getConfig = async () => {
-  // Grab our config
-  const config = {
-    apiKey: await settings.get("openai-key"),
-    baseURL: (await settings.get("openai-baseURL")) || defaultSettings.baseURL,
-    model: (await settings.get("openai-model")) || defaultSettings.model,
-    prompt: (await settings.get("system-prompt")) || defaultSettings.prompt,
-    inputTokens:
-      parseInt(await settings.get("input-tokens")) ||
-      defaultSettings.inputTokens,
-    outputTokens:
-      parseInt(await settings.get("output-tokens")) ||
-      defaultSettings.outputTokens,
-    aiThreshold:
-      parseInt(await settings.get("ai-threshold")) ||
-      defaultSettings.aiThreshold
-  }
-  return config
-}
+import { getConfig } from "~defaults"
 
 const Popup = () => {
   const [isDoneLoading, setIsDoneLoading] = useState(false)
@@ -37,6 +14,7 @@ const Popup = () => {
   const [imageUrl, setImageUrl] = useState("")
   const [description, setDescription] = useState("")
   const [aiSummary, setSummary] = useState("")
+  const [imageType, setImageType] = useState("image-cover")
   const imageRef = useRef<HTMLImageElement>(null)
 
   /**
@@ -44,17 +22,18 @@ const Popup = () => {
    */
   const imageLoaded = () => {
     setIsDoneLoading(true)
+    setImageType(getImageType())
   }
 
-  /**
-   * Uses the OpenAI API to generate a more extensive summary for the given content. Output is appended to the description state.
-   * @param tagData The data to generate a summary for
-   */
-  const getOAIData = async (tagData: {
-    title: string
-    description: string
-    body: string
-  }) => {
+  const getOAIData = async (
+    tagData: {
+      title: string
+      description: string
+      body: string
+    },
+    output: (value: React.SetStateAction<string>) => void,
+    context?: string
+  ) => {
     const config = await getConfig()
     if (!tagData.body) {
       return
@@ -73,7 +52,10 @@ const Popup = () => {
       { role: "system", content: config.prompt },
       {
         role: "user",
-        content: `Context: ${title}\nContent: "${tagData.body.slice(0, config.inputTokens * 3)}[...]\nSummary:"`
+        content:
+          (context ? `# Context\n${context}\n` : "") +
+          `# Content\n${tagData.body.slice(0, config.inputTokens * 3)}[...]\n` +
+          `# Summary`
       }
     ] as ChatCompletionMessageParam[]
     const openai = new OpenAI({
@@ -90,7 +72,7 @@ const Popup = () => {
     })
     for await (const chunk of stream) {
       if (!chunk.choices[0].delta) continue
-      setSummary((prev) => prev + (chunk.choices[0].delta.content || ""))
+      output((prev) => prev + (chunk.choices[0].delta.content || ""))
     }
   }
 
@@ -105,7 +87,7 @@ const Popup = () => {
     }
     setTitle(tagData.title)
     setPublisher(tagData.siteName)
-    setImageUrl(tagData.imageUrl || "")
+    setImageUrl(tagData.imageUrl)
     setDescription(tagData.description)
     if (!tagData.imageUrl) {
       imageLoaded()
@@ -129,13 +111,14 @@ const Popup = () => {
           chrome.runtime.sendMessage(
             { name: "parseHTML", target: "background", url: tabs[0].url, html },
             (tagData) => {
-              if (tagData.error) throw new Error("Error parsing HTML: " + tagData.error)
+              if (tagData.error)
+                throw new Error("Error parsing HTML: " + tagData.error)
               if (!tagData.description && !tagData.body && !tagData.image) {
                 throw new Error("No data found")
               }
               renderTagPopup(tagData)
               try {
-                getOAIData(tagData)
+                getOAIData(tagData, setSummary, tagData.title)
               } catch (e) {
                 console.warn("Error getting OpenAI completion: ", e)
                 setSummary("Error getting summary: " + e)
@@ -150,13 +133,34 @@ const Popup = () => {
     }
   }
 
-  // If it's got transparency, we don't want to cut it off (could be icon or logo) = use contain. Otherwise, it looks prettier to use cover
-  const getImageType = () => {
-    if (!imageUrl) {return}
+  const formatSummary = (summary: string) => {
+    const lines = summary
+      .split("\n")
+      .map((line) => line.replace(/^\s*-\s*/, ""))
+    return (
+      <ul className="summary relative flex list-disc flex-col gap-2 pl-4 italic">
+        {lines.map((content, i) => (
+          <li key={i}>
+            {content.split(" ").map((word, i) => (
+              <span key={i} className="word">
+                {word}{" "}
+              </span>
+            ))}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  const getImageType = (): "image-contain" | "image-cover" => {
     if (imageRef && imageRef.current) {
       const height = imageRef.current.naturalHeight
       const width = imageRef.current.naturalWidth
-      if (Math.abs(width / height - 1) < 0.1 || width < 100 || height < 100) return "image-contain"
+      if (Math.abs(width / height - 1) < 0.1 || width < 100 || height < 100)
+        return "image-contain"
+    }
+    if (!imageUrl) {
+      return "image-cover"
     }
     return /svg|gif/.test(imageUrl) ? "image-contain" : "image-cover"
   }
@@ -176,7 +180,7 @@ const Popup = () => {
           onLoad={imageLoaded}
           src={imageUrl} // This is blank initially and reset to be blank occasionally, so it should be fine.
           ref={imageRef}
-          className={getImageType()}
+          className={imageType}
         />
         {(title || description || aiSummary) && (
           <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
@@ -187,19 +191,7 @@ const Popup = () => {
               description
                 .split("\n")
                 .map((content, i) => <p key={i}>{content}</p>)}
-            {aiSummary && (
-              <div className="summary relative flex flex-col gap-2 italic">
-                {aiSummary.split("\n").map((content, i) => (
-                  <p key={i}>
-                    {content.split(" ").map((word, i) => (
-                      <span key={i} className="word">
-                        {word}{" "}
-                      </span>
-                    ))}
-                  </p>
-                ))}
-              </div>
-            )}
+            {aiSummary && formatSummary(aiSummary)}
           </div>
         )}
         {publisher && (
