@@ -16,7 +16,7 @@ const parseHTMLMeta = (doc: Document, url: string) => {
   let imageUrl = (doc.querySelector('meta[property="og:image"]') as HTMLMetaElement)?.content ||
       (doc.querySelector('meta[property="og:image:url"]') as HTMLMetaElement)?.content ||
       (doc.querySelector('img') as HTMLImageElement)?.src;
-  if (!imageUrl.startsWith("http")) {
+  if (imageUrl && !imageUrl.startsWith("http")) {
     imageUrl = new URL(imageUrl, url).href;
   }
   return {

@@ -228,7 +228,7 @@ const ContentPopup = () => {
               target: "background",
               url
             })
-      if (tagData.error) throw new Error(tagData.error)
+      if (tagData.error) throw new Error(`Backend error -- ${tagData.error}`)
       // It is not worth showing just a title.
       if (!tagData.description && !tagData.body && !tagData.image) {
         throw new Error("No data found")

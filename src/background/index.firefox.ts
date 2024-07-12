@@ -1,14 +1,14 @@
-import { installedHandler } from "./background";
-import { parseAndReply } from "./parsing";
+import { installedHandler } from "./common";
+import { parseAndReply } from "./parser";
 import { resolveURL } from "./services";
 
 const scrapeHandler = async ({ url }, res: (response?: any) => void) => {
-  let oldUrl = url
-  let newUrl = ""
   try {
+    let oldUrl = url
+    let newUrl = ""
     let doc: Document
     while (oldUrl !== newUrl) {
-      oldUrl = newUrl
+      oldUrl = newUrl || oldUrl
       const resp = await fetch(oldUrl)
       const html = await resp.text()
       doc = new DOMParser().parseFromString(html, "text/html")
@@ -16,6 +16,7 @@ const scrapeHandler = async ({ url }, res: (response?: any) => void) => {
     }
     await parseAndReply(doc, newUrl, res)
   } catch (err) {
+    console.error(err)
     res({ error: err.message })
   }
 }
@@ -30,6 +31,7 @@ const parseHTMLHandler = async ({ html, url }, res: (response?: any) => void) =>
       await parseAndReply(doc, url, res)
     }
   } catch (err) {
+    console.error(err)
     res({ error: err.message })
   }
 }
@@ -50,6 +52,7 @@ const messageHandler = (req: any, sender, res: (response?: any) => void) => {
         res({ error: "Unknown request" })
     }
   } catch (err) {
+    console.error(err)
     res({ error: err.message })
   }
   return true
