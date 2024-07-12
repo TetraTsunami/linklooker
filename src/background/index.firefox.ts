@@ -1,12 +1,20 @@
 import { installedHandler } from "./background";
 import { parseAndReply } from "./parsing";
+import { resolveURL } from "./services";
 
 const scrapeHandler = async ({ url }, res: (response?: any) => void) => {
+  let oldUrl = url
+  let newUrl = ""
   try {
-    const resp = await fetch(url)
-    const html = await resp.text();
-    const doc = new DOMParser().parseFromString(html, "text/html")
-    await parseAndReply(doc, url, res)
+    let doc: Document
+    while (oldUrl !== newUrl) {
+      oldUrl = newUrl
+      const resp = await fetch(oldUrl)
+      const html = await resp.text()
+      doc = new DOMParser().parseFromString(html, "text/html")
+      newUrl = await resolveURL(doc, oldUrl) || oldUrl
+    }
+    await parseAndReply(doc, newUrl, res)
   } catch (err) {
     res({ error: err.message })
   }
@@ -15,7 +23,12 @@ const scrapeHandler = async ({ url }, res: (response?: any) => void) => {
 const parseHTMLHandler = async ({ html, url }, res: (response?: any) => void) => {
   try {
     const doc = new DOMParser().parseFromString(html, "text/html")
-    await parseAndReply(doc, url, res)
+    const newUrl = await resolveURL(doc, url)
+    if (newUrl) {
+      await scrapeHandler({ url: newUrl }, res)
+    } else {
+      await parseAndReply(doc, url, res)
+    }
   } catch (err) {
     res({ error: err.message })
   }
