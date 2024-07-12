@@ -1,5 +1,5 @@
 import { Readability } from "@mozilla/readability";
-import parseSiteSpecific from "./services";
+import { doCustomParse } from "./services";
 
 export interface Meta {
   title: string,
@@ -42,7 +42,7 @@ const parseReadability = async (doc: Document) => {
 export const parseAndReply = async (doc: Document, url: string, res: (response?: any) => void) => {
   const meta = parseHTMLMeta(doc, url)
   const readability = await parseReadability(doc)
-  const siteSpecific = await parseSiteSpecific(doc, url)
+  const siteSpecific = await doCustomParse(doc, url)
   const data = {
     title: meta.title || readability?.title,
     description: meta.description || readability?.excerpt,
