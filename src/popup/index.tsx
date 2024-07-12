@@ -29,7 +29,8 @@ const Popup = () => {
     tagData: {
       title: string
       description: string
-      body: string
+      body: string,
+      forceSummary: boolean
     },
     output: (value: React.SetStateAction<string>) => void,
     context?: string
@@ -42,6 +43,7 @@ const Popup = () => {
       return
     } // Skip if we don't have an API key
     if (
+      !tagData.forceSummary &&
       tagData.description &&
       tagData.description.length > config.aiThreshold
     ) {

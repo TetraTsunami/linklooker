@@ -1,12 +1,13 @@
 import github from './github';
 import gitlab from './gitlab';
+import hn from './hackernews';
 
-const parsers = [github, gitlab];
+const parsers = [github, gitlab, hn];
 
 export interface Parser {
   matches: (doc: Document, url: string) => Promise<boolean>,
   rewrite?: (doc: Document, url: string) => Promise<string>,
-  parse?: (doc: Document, url: string) => Promise<{ title?: string, description?: string, imageUrl?: string, body?: string, siteName?: string }>
+  parse?: (doc: Document, url: string) => Promise<{ title?: string, description?: string, imageUrl?: string, body?: string, siteName?: string, forceSummary?: boolean }>
 }
 
 export const resolveURL = async (doc: Document, url: string) => {

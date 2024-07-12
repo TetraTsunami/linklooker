@@ -144,6 +144,7 @@ const ContentPopup = () => {
       title: string
       description: string
       body: string
+      forceSummary: boolean
     },
     output: (value: React.SetStateAction<string>) => void,
     context?: string
@@ -156,6 +157,7 @@ const ContentPopup = () => {
       return
     } // Skip if we don't have an API key
     if (
+      !tagData.forceSummary &&
       tagData.description &&
       tagData.description.length > config.aiThreshold
     ) {
@@ -385,7 +387,7 @@ const ContentPopup = () => {
 
   return (
     <div
-      className={`fixed min-h-[30px] max-w-[100vw] w-[450px] overflow-clip rounded-xl z-10 text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
+      className={`fixed min-h-[30px] max-w-[100vw] w-[450px] overflow-y-auto overscroll-none rounded-xl z-10 text-white bg-gray-800/60 backdrop-blur-md text-base shadow-i-lg 
         ${animationState == "closed" || animationState == "closing" ? "hide" : "hover-popup"}`}
       style={{
         top: position.top,
@@ -396,7 +398,7 @@ const ContentPopup = () => {
       }}>
       {animationState == "opening" && <div className="loader" />}
       <div
-        className={`flex flex-col overflow-y-auto max-w-full overscroll-none ${animationState != "opening" ? "inner-popup" : "none"}`}
+        className={`flex flex-col max-w-full ${animationState != "opening" ? "inner-popup" : "none"}`}
         style={{ "--maxHeight": `${maxHeight}px` } as React.CSSProperties}>
         <img // In Firefox, CSP may block the image if the img tag is created with a src attribute. We can't do {imageUrl && ...} nonsense here.
           onLoad={imageLoaded}

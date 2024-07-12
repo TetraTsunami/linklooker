@@ -46,8 +46,9 @@ export const parseAndReply = async (doc: Document, url: string, res: (response?:
     title: meta.title || readability?.title,
     description: meta.description || readability?.excerpt,
     imageUrl: meta.imageUrl,
-    body: siteSpecific.body || readability?.textContent,
+    body: readability?.textContent,
     siteName: readability?.siteName,
+    forceSummary: false,
     ...siteSpecific
   }
   res(data)
