@@ -1,5 +1,5 @@
 import { installedHandler } from "./common";
-import { parseAndReply } from "./parser";
+import { addBaseElement, parseAndReply } from "./parser";
 import { resolveURL } from "./services";
 
 const scrapeHandler = async ({ url }, res: (response?: any) => void) => {
@@ -9,9 +9,10 @@ const scrapeHandler = async ({ url }, res: (response?: any) => void) => {
     let doc: Document
     while (oldUrl !== newUrl) {
       oldUrl = newUrl || oldUrl
-      const resp = await fetch(oldUrl)
+      const resp = await fetch(oldUrl, { credentials: 'include'})
       const html = await resp.text()
       doc = new DOMParser().parseFromString(html, "text/html")
+      addBaseElement(doc, url);
       newUrl = await resolveURL(doc, oldUrl) || oldUrl
     }
     await parseAndReply(doc, newUrl, res)

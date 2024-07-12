@@ -1,10 +1,12 @@
 import github from './github';
-const parsers = [github];
+import gitlab from './gitlab';
+
+const parsers = [github, gitlab];
 
 export interface Parser {
   matches: (doc: Document, url: string) => Promise<boolean>,
   rewrite?: (doc: Document, url: string) => Promise<string>,
-  parse?: (node: Node, url: string) => Promise<{ title?: string, description?: string, imageUrl?: string, body?: string, siteName?: string }>
+  parse?: (doc: Document, url: string) => Promise<{ title?: string, description?: string, imageUrl?: string, body?: string, siteName?: string }>
 }
 
 export const resolveURL = async (doc: Document, url: string) => {
@@ -24,7 +26,7 @@ export const doCustomParse = async (doc: Document, url: string) => {
   for (const parser of parsers) {
     try {
       if (await parser.matches(doc, url) && parser.parse) {
-        const documentClone = doc.cloneNode(true);
+        const documentClone = doc.cloneNode(true) as Document;
         return await parser.parse(documentClone, url);
       }
     } catch (e) {

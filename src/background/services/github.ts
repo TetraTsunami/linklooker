@@ -7,7 +7,7 @@ const GithubParser: Parser = {
     const path = new URL(url).pathname.split("/") // ["", "user", "repo", ...]
     return path.length >= 3
   },
-  parse: async (node: Node, url: string) => {
+  parse: async (doc: Document, url: string) => {
     const path = new URL(url).pathname.split("/") // ["", "user", "repo", ...]
     const data = await fetch(`https://api.github.com/repos/${path[1]}/${path[2]}/readme`).then(res => res.json())
     const decoded = atob(data.content)
