@@ -17,7 +17,7 @@ export const resolveURL = async (doc: Document, url: string) => {
         return await parser.rewrite(doc, url);
       }
     } catch (e) {
-      console.error(e);
+      console.warn("Error in custom parser: ", e);
     }
   }
   return "";
@@ -31,7 +31,7 @@ export const doCustomParse = async (doc: Document, url: string) => {
         return await parser.parse(documentClone, url);
       }
     } catch (e) {
-      console.error(e);
+      console.warn("Error in custom parser: ", e);
     }
   }
   return {};

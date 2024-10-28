@@ -3,7 +3,7 @@ import type { Parser } from "."
 const HNParser: Parser = {
   matches: async (doc: Document, url: string) => {
     const regex = "^https://news.ycombinator.com/item\?"
-    return url.match(regex).length > 0
+    return Boolean(url.match(regex))
   },
   parse: async (doc: Document, url: string) => {
     const postText = doc.querySelector(".toptext")?.textContent
