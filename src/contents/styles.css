@@ -4,6 +4,8 @@
 
 .hover-popup {
   animation: growDown 0.6s ease-in-out forwards;
+  scrollbar-width: thin;
+  scrollbar-color: white transparent;
 }
 
 .hide {
@@ -45,7 +47,7 @@ ul.summary li::marker {
   }
   100% {
     transform: translateY(0);
-    max-height: 700px;
+    max-height: 100vh;
     opacity: 1;
   }
 }
@@ -53,7 +55,7 @@ ul.summary li::marker {
 @keyframes shrinkDown {
   0% {
     transform: translateY(0);
-    max-height: 700px;
+    max-height: 100vh;
     opacity: 1;
   }
   100% {
