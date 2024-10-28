@@ -2,13 +2,13 @@ import { Storage } from "@plasmohq/storage"
 
 export const defaultSettings = {
   baseURL: "https://api.openai.com/v1/",
-  model: "gpt-3.5-turbo",
+  model: "gpt-4o-mini",
   prompt:
-  "Generate a concise and to the point bulleted summary for the following content. Make sure the summary relates to the context snippet provided.",
-  inputTokens: 1000,
-  outputTokens: 150,
+  "Generate a concise and to the point bulleted summary for the following content. Make sure the summary relates to the context snippet provided, if there is one.",
+  inputTokens: 1500,
+  outputTokens: 500,
   aiThreshold: 300,
-  };
+};
   
 const settings = new Storage()
   
