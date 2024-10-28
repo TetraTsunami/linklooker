@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import "./styles.css"
 import icon from "data-base64:/assets/icon.png"
 import { useStorage } from "@plasmohq/storage/hook"
+import openaiGuide from "data-base64:/assets/openai-guide.png"
 
 import ContentPopup from "../contents/index"
 
@@ -58,7 +59,7 @@ const APIGuide = () => (
     <summary className="text-xl font-semibold">How Do I Get An API Key??</summary>
     <ol className="flex list-decimal flex-col items-start gap-3 ps-[40px]">
       <li>Go to <a className="text-blue-400 underline" href="https://platform.openai.com/signup">OpenAI's website</a> and sign up for an account.</li>
-      <img className="rounded-xl shadow-i-sm" src="https://cloud.tsuni.dev/f/fa86976461b14a71aaaf/?dl=1" alt="OpenAI API key creation modal with red markers indicating steps to access it" />
+      <img className="rounded-xl shadow-i-sm" src={openaiGuide} alt="OpenAI API key creation modal with red markers indicating steps to access it" />
       <li>Once you're logged in, go to the <a className="text-blue-400 underline" href="https://platform.openai.com/account/api-keys">API keys page</a>.</li>
       <li>Click the "Create New Secret Key" button.</li>
       <li>Give your key a name and click "Create".</li>
