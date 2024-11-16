@@ -2,7 +2,7 @@
 
 # LinkLooker
 
-<a href="https://chromewebstore.google.com/detail/linklooker/madknadnoiflomiheamlcmfbnbmlccik"><img src="https://storage.googleapis.com/web-dev-uploads/image/WlD8wC6g8khYWPJUsQceQkhXSlv1/UV4C4ybeBTsZt43U4xis.png" alt="Chrome Web Store badge" height="58" width="206"></a>
+<a href="https://chromewebstore.google.com/detail/linklooker/madknadnoiflomiheamlcmfbnbmlccik"><img src="https://developer.chrome.com/static/docs/webstore/branding/image/UV4C4ybeBTsZt43U4xis.png" alt="Chrome Web Store badge" height="58" width="206"></a>
 <a href="https://addons.mozilla.org/en-US/firefox/addon/linklooker"><img src="https://github.com/TetraTsunami/linklooker/assets/78718829/12854354-5e31-44a4-8c04-16df212c8a37" alt="Firefox Add-Ons badge" height="58"></a>
 
 ## What is it?
