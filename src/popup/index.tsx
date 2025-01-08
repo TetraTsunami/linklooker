@@ -25,7 +25,7 @@ const Popup = () => {
     description: string
     imageUrl: string
     siteName: string
-  }) => {
+  }) {
     if (!tagData.title && !tagData.description) {
       throw new Error("No data found")
     }
@@ -42,35 +42,61 @@ const Popup = () => {
     }
   }
 
-  const updatePopup = async () => {
+  async function getCurrentTab(): Promise<chrome.tabs.Tab> {
+    const tabs = await new Promise<chrome.tabs.Tab[]>((resolve) => {
+      chrome.tabs.query({ active: true, currentWindow: true }, resolve);
+    });
+    return tabs[0];
+  }
+  
+  async function getPageHTML(tabId: number): Promise<string> {
+    const response = await new Promise<any>((resolve) => {
+      chrome.tabs.sendMessage(tabId, { name: "getHTML" }, resolve);
+    });
+    
+    if (!response) {
+      window.close();
+      return null;
+    }
+    if (response.error) throw new Error(response.error);
+    return response.html as string;
+  }
+  
+  async function parseHTML(url: string, html: string) {
+    const tagData = await new Promise<any>((resolve) => {
+      chrome.runtime.sendMessage(
+        { name: "parseHTML", target: "background", url, html },
+        resolve
+      );
+    });
+  
+    if (tagData.error) throw new Error("Error parsing HTML: " + tagData.error);
+    if (!tagData.description && !tagData.body && !tagData.image) {
+      throw new Error("No data found");
+    }
+    return tagData;
+  }
+  
+  async function updatePopup() {
     try {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, { name: "DOMInfo" }, (resp) => {
-          if (!resp) {
-            window.close()
-            return
-          }
-          if (resp.error) throw new Error(resp.error)
-          const html = resp.html
-          chrome.runtime.sendMessage(
-            { name: "parseHTML", target: "background", url: tabs[0].url, html },
-            (tagData) => {
-              if (tagData.error)
-                throw new Error("Error parsing HTML: " + tagData.error)
-              if (!tagData.description && !tagData.body && !tagData.image) {
-                throw new Error("No data found")
-              }
-              renderTagPopup(tagData)
-              try {
-                getOAIData(tagData, setSummary, tagData.title)
-              } catch (e) {
-                console.warn("Error getting OpenAI completion: ", e)
-                setSummary("Error getting summary: " + e)
-              }
-            }
-          )
-        })
-      })
+      const currentTab = await getCurrentTab();
+      const html = await getPageHTML(currentTab.id!);
+      if (!html) return;
+      
+      const tagData = await parseHTML(currentTab.url!, html);
+      if (tagData.error) throw new Error(`Backend error -- ${tagData.error}`)
+      // It is not worth showing just a title.
+      if (!tagData.description && !tagData.body && !tagData.image) {
+        throw new Error("No data found")
+      }
+      renderTagPopup(tagData);
+  
+      try {
+        await getOAIData(tagData, setSummary, tagData.title);
+      } catch (e) {
+        console.warn("Error getting OpenAI completion: ", e);
+        setSummary("Error getting summary: " + e);
+      }
     } catch (e) {
       setTitle("Error");
       setDescription(() => e);
